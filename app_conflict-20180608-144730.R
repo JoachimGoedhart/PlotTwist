@@ -23,10 +23,11 @@ Confidence_level = Confidence_Percentage/100
 #From Paul Tol: https://personal.sron.nl/~pault/
 #Code to generate vectors in R to use these palettes
 
-#Red, Green, Blue, yellow, cyan, purple, grey
 Tol_bright <- c('#EE6677', '#228833', '#4477AA', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB')
+                 
+Tol_vibrant <- c('#EE7733', '#0077BB', '#33BBEE', '#EE3377', '#CC3311', '#009988', '#BBBBBB')
                                    
-Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#332288', '#DDDDDD')
+Tol_muted <- c('#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#DDDDDD')
                                                    
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
 
@@ -45,7 +46,7 @@ ui <- fluidPage(
                    h4("Data"),
                    
                    sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
-                   checkboxInput("color_data", "Use color for the data", value=TRUE),
+                   checkboxInput("color_data", "Use color", value=TRUE),
                    h4("Statistics"),
                    sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),              
 
@@ -56,25 +57,16 @@ ui <- fluidPage(
                    #   checkboxInput(inputId = "random_jitter", label = ("Randomize Jitter"), value = TRUE)
                    # ),
                    
-                   checkboxInput("summaryInput", "Show the mean", value=TRUE),
+                   checkboxInput("summaryInput", "Show the mean", value=FALSE),
                    #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
                    checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
 
  #                  selectInput("colour_list", "Colour:", choices = ""),
-                   checkboxInput("color_stats", "Use color for the stats", value=TRUE),
+                   checkboxInput("color_stats", "Use color for the stats", value=FALSE),
                   radioButtons(
                                 "adjustcolors", "Color palette:",
                               choices = 
-                      list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
-                   conditionalPanel(condition = "input.adjustcolors == 5",
-                          textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen"), 
-                          
-                          h5("",
-                             a("Click here for more info on color names",
-                               href = "http://www.endmemo.com/program/R/color.php"))
-                          
-                          ),
- 
+                      list("Standard" = 1,"Colorblind safe" = 2, "User defined"=3) , selected =  1),
  
  
                    
@@ -399,20 +391,10 @@ output$downloadPlotPNG <- downloadHandler(
  
     #Define the palette that is used, if different from default
     #     newColors <- Tol_bright
-    #      newColors <- Tol_muted
+          newColors <- Tol_muted
     #      newColors <- Tol_vibrant
-    newColors <- NULL
+    #      newColors <- Tol_light
     
-    if (input$adjustcolors == 2) {
-      newColors <- Tol_bright
-    } else if (input$adjustcolors == 3) {
-      newColors <- Tol_muted
-    } else if (input$adjustcolors == 4) {
-      newColors <- Tol_light
-    } else if (input$adjustcolors == 5) {
-      newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
-    }
-            
     max_colors <- nlevels(as.factor(klaas$unique_id))
     if(length(newColors) < max_colors) {
       newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
@@ -510,7 +492,7 @@ output$downloadPlotPNG <- downloadHandler(
       p <- p + theme(legend.position="none")
     }
 
-    if (input$adjustcolors >1) {
+    if (input$adjustcolors == 2) {
      p <- p+ scale_color_manual(values=newColors)
       p <- p+ scale_fill_manual(values=newColors)
     }
