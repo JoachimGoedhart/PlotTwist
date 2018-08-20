@@ -71,7 +71,7 @@ ui <- fluidPage(
                           
                           h5("",
                              a("Click here for more info on color names",
-                               href = "http://www.endmemo.com/program/R/color.php"))
+                               href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
                           
                           ),
  
@@ -195,18 +195,18 @@ ui <- fluidPage(
                               "Comma" = ",",
                               "Semicolon" = ";"),
                        selected = "\t")),
+                   # conditionalPanel(
                    checkboxInput(inputId = "tidyInput",
-                                 label = "These data are Tidy (not implemented!)",
-                                 value = FALSE),
-                   conditionalPanel(
-                     condition = "input.tidyInput==true",
-                     h5("",
-                        a("Click here for more info on tidy data",
-                          href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
-                     selectInput("x_var", "Conditions to compare:", choices = ""),
-                     selectInput("y_var", "Variables:", choices = "")
+                                  label = "These data are Tidy (not implemented!)",
+                                  value = FALSE)
+                     # condition = "input.tidyInput==true",
+                     # h5("",
+                     #    a("Click here for more info on tidy data",
+                     #      href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
+                     # selectInput("x_var", "Conditions to compare:", choices = ""),
+                     # selectInput("y_var", "Variables:", choices = "")
                      
-                   )
+                   # )
                  ),
                  
                  conditionalPanel(
@@ -228,7 +228,7 @@ ui <- fluidPage(
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ), 
-                  tabPanel("Data Summary", tableOutput('data_summary')),
+                  # tabPanel("Data Summary", tableOutput('data_summary')),
                   tabPanel("About", includeHTML("about.html")
                   )
                   
