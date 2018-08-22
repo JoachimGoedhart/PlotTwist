@@ -355,7 +355,7 @@ height <- reactive ({ input$plot_height })
 
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
-    paste("ComparisonPlot_", Sys.time(), ".pdf", sep = "")
+    paste("TimeseriesPlot_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
     ggsave(file, width = input$plot_width/72,
@@ -366,7 +366,7 @@ output$downloadPlotPDF <- downloadHandler(
 
 output$downloadPlotPNG <- downloadHandler(
   filename <- function() {
-    paste("ComparisonPlot_", Sys.time(), ".png", sep = "")
+    paste("TimeseriesPlot_", Sys.time(), ".png", sep = "")
   },
   content <- function(file) {
     ggsave(file, width = input$plot_width/72,
