@@ -7,8 +7,11 @@ PlotTwist (Plotting Time-dependent data With Indication of the STimulus) is an a
 The comparison of multiple conditions is enabled by multiple file upload (csv or xls format), where each file represents a condition.
 There is an option to indicate the time window during which a stimulus was applied. This will overlay a transparant grey box.
 For more information on the underlying code see these blogs:
-[Visualizing data with R/ggplot2 ??? It???s about time](http://thenode.biologists.com/visualizing-data-with-r-ggplot2/education/)
-[isualizing data with R/ggplot2 ??? One more time](http://thenode.biologists.com/visualizing-data-one-more-time/education/)
+
+[Visualizing data with R/ggplot2 - It's about time](http://thenode.biologists.com/visualizing-data-with-r-ggplot2/education/)
+
+[Visualizing data with R/ggplot2 - One more time](http://thenode.biologists.com/visualizing-data-one-more-time/education/)
+
 
 ### Running the App
 
