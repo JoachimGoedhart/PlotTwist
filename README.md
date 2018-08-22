@@ -15,6 +15,7 @@ For more information on the underlying code see these blogs:
 Currently, the app can only run from R/Rstudio.
 
 Give it a quick try by running it directly from Github. In the command line (in R or Rstudio) type:
+
 shiny::runGitHub('PlotTwist', 'JoachimGoedhart')
 
 Or download it to use it offline:
