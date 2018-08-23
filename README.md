@@ -42,7 +42,14 @@ PlotTwist is created and maintained by Joachim Goedhart ([@joachimgoedhart](http
 
 ### Example output
 
+Data from a single file with stimulation indicated by a grey box:
+
 ![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Timeseries_example1.png "Output")
+
+Data from multiple files, means (and 95% CI) of each condition have different colors:
+
+![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Timeseries_example2.png "Output")
+
 
   
 ### Potential improvements/additions:
