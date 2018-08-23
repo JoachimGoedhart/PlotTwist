@@ -45,7 +45,6 @@ ui <- fluidPage(
                    h4("Data"),
                    
                    sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
-                   checkboxInput("color_data", "Use color for the data", value=TRUE),
                    h4("Statistics"),
                    sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),              
 
@@ -60,37 +59,23 @@ ui <- fluidPage(
                    #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
                    checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
 
- #                  selectInput("colour_list", "Colour:", choices = ""),
-                   checkboxInput("color_stats", "Use color for the stats", value=TRUE),
-                  radioButtons(
-                                "adjustcolors", "Color palette:",
-                              choices = 
-                      list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
-                   conditionalPanel(condition = "input.adjustcolors == 5",
-                          textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen"), 
-                          
-                          h5("",
-                             a("Click here for more info on color names",
-                               href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
-                          
-                          ),
- 
- 
+
  
                    
                    h4("Plot Layout"),
                    checkboxInput(inputId = "indicate_stim",
                                  label = "Indicate Baseline/Stimulus",
                                  value = FALSE),
+                   
                    conditionalPanel(
                      condition = "input.indicate_stim == true",
                      textInput("stim_range", "Range of grey box (from,to)", value = "46,146")),
-                   
-                   numericInput("plot_height", "Height (# pixels): ", value = 480),
-                   numericInput("plot_width", "Width (# pixels):", value = 600),
-                   
+                   checkboxInput(inputId = "no_grid",
+                                 label = "Remove gridlines",
+                                 value = FALSE),
+
                    checkboxInput(inputId = "adjust_scale",
-                                 label = "Adjust scaling",
+                                 label = "Adjust scale",
                                  value = FALSE),
                    conditionalPanel(
                      condition = "input.adjust_scale == true",
@@ -102,11 +87,35 @@ ui <- fluidPage(
                      textInput("range_y", "Range y-axis (min,max)", value = "0,2")
                      
                    ),
-                   conditionalPanel(
-                     condition = "input.colour_list != 'none'",
-                     checkboxInput(inputId = "add_legend",
-                                   label = "Add legend",
-                                   value = FALSE)),
+                   
+                   
+                   
+                   checkboxInput("color_data", "Use color for the data", value=FALSE),
+                   checkboxInput("color_stats", "Use color for the stats", value=FALSE),
+                   #                  selectInput("colour_list", "Colour:", choices = ""),
+                   conditionalPanel(condition = "input.color_data == true || input.color_stats == true",
+                                    radioButtons("adjustcolors", "Color palette:", choices = 
+                                                   list("Standard" = 1,
+                                                        "Colorblind safe (bright)" = 2,
+                                                        "Colorblind safe (muted)" = 3,
+                                                        "Colorblind safe (light)" = 4,
+                                                        "User defined"=5),
+                                                 selected =  1),
+                                    conditionalPanel(condition = "input.adjustcolors == 5",
+                                                     textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen")), 
+                                    
+                                    h5("",
+                                       a("Click here for more info on color names",
+                                         href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
+                  
+                    ),
+ 
+ 
+                    
+                   numericInput("plot_height", "Height (# pixels): ", value = 480),
+                   numericInput("plot_width", "Width (# pixels):", value = 600),
+                   
+
                    h4("Labels"),
                    
                    checkboxInput(inputId = "add_title",
@@ -141,6 +150,11 @@ ui <- fluidPage(
                    numericInput("fnt_sz_ax", "Size axis labels:", value = 18)
                    
                  ),
+ conditionalPanel(
+   condition = "input.color_data == true || input.color_stats == true",
+   checkboxInput(inputId = "add_legend",
+                 label = "Add legend",
+                 value = FALSE)),
                  
                  conditionalPanel(
                    condition = "input.tabs=='Data upload'",
@@ -499,15 +513,16 @@ output$downloadPlotPNG <- downloadHandler(
       p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
       p <- p + theme(axis.title = element_text(size=input$fnt_sz_ttl))
     }
-
-    # #remove legend (if selected)
-    # if (input$add_legend == FALSE) {
-    #   p <- p + theme(legend.position="none")
-    # }
     
     #remove legend (if selected)
     if (input$add_legend == FALSE) {  
       p <- p + theme(legend.position="none")
+    }
+    
+    #remove gridlines (if selected)
+    if (input$no_grid == TRUE) {  
+      p <- p+ theme(panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank())
     }
 
     if (input$adjustcolors >1) {
