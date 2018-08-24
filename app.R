@@ -69,7 +69,7 @@ ui <- fluidPage(
                    
                    conditionalPanel(
                      condition = "input.indicate_stim == true",
-                     textInput("stim_range", "Range of grey box (from,to)", value = "46,146")),
+                     textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146")),
                    checkboxInput(inputId = "no_grid",
                                  label = "Remove gridlines",
                                  value = FALSE),
@@ -485,10 +485,20 @@ output$downloadPlotPNG <- downloadHandler(
     # if a stimulus is applied
     if (input$indicate_stim == TRUE) {
       rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
-      p <- p + annotate("rect", xmin=rang[1], xmax=rang[2], ymin=-Inf, ymax=Inf, alpha=0.1, fill="black")
+
+      #If only one number is entered, a vertical line is added
+      if (length(rang) ==1) {
+        p <- p + geom_vline(xintercept=rang[1], black="orange", size=1)
+      }
       
+      #Repeat annotating the grey box for every 'pair' of numbers
+      nsteps = floor(length(rang)/2)
+      for (i in 0:nsteps) {
+        
+        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=-Inf, ymax=Inf, alpha=0.1, fill="black")
+      
+       }
     }
-    
     
     # # if the range of values is specified
     if (input$adjust_scale == TRUE) {
