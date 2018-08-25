@@ -50,7 +50,7 @@ Data from multiple files, means (and 95% CI) of each condition have different co
 
 ![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Timeseries_example2.png "Output")
 
-The data for the x-axis does not need to be time. Also other continuous data can be visualized. This is an exampke with spectral data:
+The data for the x-axis does not need to be time. Also other continuous data can be visualized. This is an example with spectral data (shaded region indicates a region of 460-500 nm, a possible CFP emission filter):
 
 ![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Spectra_example1.png "Output")
 
