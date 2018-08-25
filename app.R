@@ -43,6 +43,8 @@ ui <- fluidPage(
                  conditionalPanel(
                    condition = "input.tabs=='Plot'",
                    h4("Data"),
+                   radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot"), selected = "dataasline"),
+                   checkboxInput("thicken", "The plot thickens", value = FALSE),
                    
                    sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
                    h4("Statistics"),
@@ -158,7 +160,7 @@ ui <- fluidPage(
                  
                  conditionalPanel(
                    condition = "input.tabs=='Data upload'",
-                   h4("Data upload"),
+                   h4("Data upload (First column used for x-axis)"),
                    radioButtons(
                      "data_input", "",
                      choices = 
@@ -467,7 +469,18 @@ output$downloadPlotPNG <- downloadHandler(
     p <- ggplot(df_tidy(), aes(x=Time))
       
       #### plot individual measurements ####
-    p <- p+ geom_line(data=df_tidy(), aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), alpha=input$alphaInput)
+    
+    if (input$thicken =="TRUE") {
+      multiplier <- 4
+    } else if (input$thicken =="FALSE"){
+      multiplier <- 1
+    }
+    
+    if (input$data_form == "dataasline") {
+      p <- p+ geom_line(data=df_tidy(), aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
+    } else if (input$data_form == "dataasdot") {
+      p <- p + geom_point(data=df_tidy(), aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
+    } 
 
     if (input$summaryInput == TRUE  && input$add_CI == FALSE) {
       p <- p + geom_line(data=df_summary_mean(), aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
