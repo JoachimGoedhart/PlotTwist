@@ -23,18 +23,14 @@ Confidence_level = Confidence_Percentage/100
 #From Paul Tol: https://personal.sron.nl/~pault/
 #Code to generate vectors in R to use these palettes
 
-#Red, Green, Blue, yellow, cyan, purple, grey
 Tol_bright <- c('#EE6677', '#228833', '#4477AA', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB')
-                                   
 Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#332288', '#DDDDDD')
-                                                   
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
-
 
 
 #Read a text file (comma separated values)
 df_wide_example <- read.csv("Data_wide_example_time_single.csv", na.strings = "")
-df_tidy_example <- read.csv("Data_tidy_example_time_multi.csv", na.strings = "")
+df_tidy_example <- read.csv("Data_tidy_example_time_multi.csv")
 
 ui <- fluidPage(
   titlePanel("PlotTwist - Plotting Data from Time series"),
@@ -50,20 +46,10 @@ ui <- fluidPage(
                    h4("Statistics"),
                    sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),              
 
-                
-                   # conditionalPanel(
-                   #   condition = "input.adjust_jitter == true",
-                   #   sliderInput("jitter_width", "Width:", 0,0.5,0.3),
-                   #   checkboxInput(inputId = "random_jitter", label = ("Randomize Jitter"), value = TRUE)
-                   # ),
-                   
-                   checkboxInput("summaryInput", "Show the mean", value=TRUE),
+                   checkboxInput("summaryInput", "Show the mean", value=FALSE),
                    #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
                    checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
 
-
- 
-                   
                    h4("Plot Layout"),
                    checkboxInput(inputId = "indicate_stim",
                                  label = "Indicate Baseline/Stimulus",
@@ -90,8 +76,6 @@ ui <- fluidPage(
                      
                    ),
                    
-                   
-                   
                    checkboxInput("color_data", "Use color for the data", value=FALSE),
                    checkboxInput("color_stats", "Use color for the stats", value=FALSE),
                    #                  selectInput("colour_list", "Colour:", choices = ""),
@@ -109,15 +93,11 @@ ui <- fluidPage(
                                     h5("",
                                        a("Click here for more info on color names",
                                          href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
-                  
                     ),
  
- 
-                    
                    numericInput("plot_height", "Height (# pixels): ", value = 480),
                    numericInput("plot_width", "Width (# pixels):", value = 600),
-                   
-
+ 
                    h4("Labels"),
                    
                    checkboxInput(inputId = "add_title",
@@ -127,8 +107,7 @@ ui <- fluidPage(
                      condition = "input.add_title == true",
                      textInput("title", "Title:", value = "")
                    ),
-                   
-                   
+                  
                    checkboxInput(inputId = "label_axes",
                                  label = "Change labels",
                                  value = FALSE),
@@ -139,24 +118,22 @@ ui <- fluidPage(
                      
                    ),
                    
-                   
                    checkboxInput(inputId = "adj_fnt_sz",
                                  label = "Change font size",
                                  value = FALSE)
                  ),
-                 
-                 
+
                  conditionalPanel(
                    condition = "input.adj_fnt_sz == true",
                    numericInput("fnt_sz_ttl", "Size axis titles:", value = 24),
                    numericInput("fnt_sz_ax", "Size axis labels:", value = 18)
                    
                  ),
- conditionalPanel(
-   condition = "input.color_data == true || input.color_stats == true",
-   checkboxInput(inputId = "add_legend",
-                 label = "Add legend",
-                 value = FALSE)),
+                conditionalPanel(
+                  condition = "input.color_data == true || input.color_stats == true",
+                  checkboxInput(inputId = "add_legend",
+                  label = "Add legend",
+                  value = FALSE)),
                  
                  conditionalPanel(
                    condition = "input.tabs=='Data upload'",
@@ -165,7 +142,7 @@ ui <- fluidPage(
                      "data_input", "",
                      choices = 
                        list("Example 1 (wide format)" = 1,
- #                          "Example 2 (tidy format)" = 2,
+                            "Example 2 (tidy format)" = 2,
                             "Upload (multiple) file(s)" = 3,
                             "Paste data" = 4)
                      ,
@@ -180,19 +157,6 @@ ui <- fluidPage(
                                       "Excel" = "Excel"
                                  ),
                                  selected = "text")
-                     # conditionalPanel(
-                     #   condition = "input.file_type=='text'",
-                     #   
-                     #   radioButtons(
-                     #     "upload_delim", "Delimiter",
-                     #     choices = 
-                     #       list("Comma" = ",",
-                     #            "Tab" = "\t",
-                     #            "Semicolon" = ";",
-                     #            "Space" = " "),
-                     #     selected = ",")),
-                     
-#                     actionButton
                      ),
                    
                    conditionalPanel(
@@ -211,18 +175,20 @@ ui <- fluidPage(
                               "Comma" = ",",
                               "Semicolon" = ";"),
                        selected = "\t")),
-                   # conditionalPanel(
+                   # 
                    checkboxInput(inputId = "tidyInput",
-                                  label = "These data are Tidy (not implemented!)",
-                                  value = FALSE)
-                     # condition = "input.tidyInput==true",
-                     # h5("",
-                     #    a("Click here for more info on tidy data",
-                     #      href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
-                     # selectInput("x_var", "Conditions to compare:", choices = ""),
-                     # selectInput("y_var", "Variables:", choices = "")
-                     
-                   # )
+                                  label = "These data are Tidy (implemented!)",
+                                  value = FALSE),
+                    conditionalPanel(condition = "input.tidyInput==true",
+                      h5("",
+                         a("Click here for more info on tidy data",
+                           href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
+                      selectInput("x_var", "Select variable for x-axis", choices = ""),
+                      selectInput("y_var", "Select variable for y-axis", choices = ""),
+                      selectInput("g_var", "Identifier of single measurement", choices = ""),
+                      selectInput("c_var", "Identifier of condition", choices = "")
+
+                    )
                  ),
                  
                  conditionalPanel(
@@ -234,9 +200,6 @@ ui <- fluidPage(
                    condition = "input.tabs=='Data Summary'",
                    h4("Data summary")    
                  )
-                 
-                 
-                 
     ),
     mainPanel(
       
@@ -244,7 +207,7 @@ ui <- fluidPage(
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ), 
-                  # tabPanel("Data Summary", tableOutput('data_summary')),
+                  tabPanel("Data Summary", tableOutput('data_summary')),
                   tabPanel("About", includeHTML("about.html")
                   )
                   
@@ -254,7 +217,7 @@ ui <- fluidPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
 
   
   
@@ -266,8 +229,14 @@ df_upload <- reactive({
     if (input$data_input == 1) {
       data <- df_wide_example
       data$id <- "1"
+
     }  else if (input$data_input == 2) {
-     data <- df_tidy_example 
+#      
+      updateSelectInput(session, "tidyInput", selected = TRUE)
+#      data <- df_wide_example
+#      data$id <- "1"
+
+      data <- df_tidy_example 
     } else if (input$data_input == 3) {
       if (is.null(input$upload)) {
         return(data.frame(x = "Select your datafile", Time=1,Cell=1, id=1))
@@ -279,16 +248,16 @@ df_upload <- reactive({
           df_input_list <- lapply(input$upload$datapath, read.csv)
           } else if (input$file_type == "Excel"){
           df_input_list <- lapply(input$upload$datapath, read_excel)
-            
           }
           
           #Take the filenames input$cvcs$name and remove anything after "." to get rid of extension   
           names(df_input_list) <- gsub(input$upload$name, pattern="\\..*", replacement="")
           #Merge all the dataframes and use the filenames (without extension) as id    
           df_input <- bind_rows(df_input_list, .id = "id")
-          
+          if(input$tidyInput == FALSE ) {
           #Force the first column from the csv file to be labeled as "Time"
           names(df_input)[2] <- "Time"
+          }
           data <- df_input
           
         })
@@ -316,7 +285,6 @@ df_upload <- reactive({
 #############################################################
 #### DISPLAY UPLOADED DATA (exactly as provided ##################
 
-
 output$data_uploaded <- renderDataTable({
   
   #    observe({ print(input$tidyInput) })
@@ -327,26 +295,87 @@ output$data_uploaded <- renderDataTable({
 
  #################################################
 ############## Convert data if needed ############
-df_tidy <- reactive({
+df_upload_tidy <- reactive({
+  
+  koos <- df_upload()
+
   if(input$tidyInput == FALSE ) {
-    klaas <- gather(df_upload(), Sample, Value, -Time, -id)
-    klaas <- unite(klaas, unique_id, c(id, Sample), sep="_", remove = FALSE)
+    klaas <- gather(koos, Sample, Value, -Time, -id)
+
+    klaas <- klaas %>% mutate (Time = as.numeric(Time), Value = as.numeric(Value))
   }
   
   else if(input$tidyInput == TRUE ) {
-    klaas <- df_upload()
 
+   klaas <- koos
+   
+#        c_choice <- input$c_var
+#        g_choice <- input$g_var
+#        klaas <- unite(klaas, unique_id, c(c_choice, g_choice), sep="_", remove = FALSE)
+        
   }
   return(klaas)
 })
  #################################################
+
+####################################
+##### Get the Variables ##############
+
+observe({ 
+  var_names  <- names(df_upload_tidy())
+  var_list <- c("none", var_names)
+  #        updateSelectInput(session, "colour_list", choices = var_list)
+  updateSelectInput(session, "y_var", choices = var_list)
+  updateSelectInput(session, "x_var", choices = var_list)
+  updateSelectInput(session, "c_var", choices = var_list)
+  updateSelectInput(session, "g_var", choices = var_list)
+})
+################################### 
+
+
+###########################################################  
+######## Extract the data for display & summary stats #######  
+
+df_selected <- reactive({
+  if(input$tidyInput == TRUE ) {
+    df_temp <- df_upload_tidy()
+    
+    x_choice <- input$x_var
+    y_choice <- input$y_var
+    c_choice <- input$c_var
+    g_choice <- input$g_var
+    
+    
+    #Define how each experimental condition is identified
+    if (c_choice == "none" || is.null(c_choice)) {
+      c_choice <- "id"
+    } 
+    
+    #Define how each individual measurement is identified
+    if (g_choice == "none" || is.null(g_choice)) {
+      g_choice <- "Sample"
+    } 
+    
+    koos <- df_temp %>% select(Time = !!x_choice , Value = !!y_choice, id=!!c_choice, Sample=!!g_choice)
+    koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
+    
+  } else if (input$tidyInput == FALSE ) {
+#    koos <- df_upload_tidy() %>% filter(!is.na(Value))
+    koos <- df_upload_tidy()
+    
+    koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
+  }
+  
+  return(koos)
+})
+###########################################################  
 
 
 ##################################################
 #### Caluclate Summary of the DATA for the MEAN ####
 
 df_summary_mean <- reactive({
-  koos <- df_tidy() %>%
+  koos <- df_selected() %>%
     group_by(Time, id) %>% 
     summarise(n = n(),
               mean = mean(Value, na.rm = TRUE),
@@ -400,7 +429,11 @@ output$downloadPlotPNG <- downloadHandler(
   output$coolplot <- renderPlot(width = width, height = height, {
 
     #Define how colors are used
-    klaas <- df_tidy()
+    klaas <- df_selected()
+    
+    klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.factor(unique_id))
+
+    
     number_of_conditions <- nlevels(as.factor(klaas$id))
     if (number_of_conditions == 1) {
       kleur_data <- "unique_id"
@@ -411,7 +444,6 @@ output$downloadPlotPNG <- downloadHandler(
     if (input$color_data == FALSE) {
       kleur_data <- NULL
     }
- 
  
     #Define the palette that is used, if different from default
     #     newColors <- Tol_bright
@@ -452,22 +484,40 @@ output$downloadPlotPNG <- downloadHandler(
       kleur_stats <- "id"
     } 
 
-      # ########## Set default to Plotting "Time" and "Value"
-      # if (input$x_var == "none") {
-      #   x_choice <- "Time"
-      # } else if (input$x_var != "none") {
-      #   x_choice <- as.character(input$x_var)
-      # }  
-      # 
-      # if (input$y_var == "none") {
-      #   y_choice <- "Value"
-      # } else if (input$y_var != "none") {
-      #   y_choice <- as.character(input$y_var)
-      # }
+    #   ########## Set default to Plotting "Time" and "Value"
+    #   if (input$x_var == "none") {
+    #     x_choice <- "Time"
+    #   } else if (input$x_var != "none") {
+    #     x_choice <- as.character(input$x_var)
+    #   }
+    # 
+    #   if (input$y_var == "none") {
+    #     y_choice <- "Value"
+    #   } else if (input$y_var != "none") {
+    #     y_choice <- as.character(input$y_var)
+    #   }
+    # 
+    # #Define how each experimental condition is identified
+    # if (input$c_var == "none") {
+    #   c_choice <- "id"
+    # } else if (input$x_var != "none") {
+    #   c_choice <- as.character(input$c_var)
+    # }
+    # 
+    # #Define how each individual measurement is identified
+    # if (input$g_var == "none") {
+    #   g_choice <- "unique_id"
+    # } else if (input$x_var != "none") {
+    #   g_choice <- as.character(input$g_var)
+    # }
+
     
     #### Command to prepare the plot ####
-    p <- ggplot(df_tidy(), aes(x=Time))
-      
+#    p <- ggplot(df_upload_tidy(), aes(x=Time))
+ 
+    p <- ggplot(data=klaas, aes_string(x="Time")) 
+    
+         
       #### plot individual measurements ####
     
     if (input$thicken =="TRUE") {
@@ -477,16 +527,16 @@ output$downloadPlotPNG <- downloadHandler(
     }
     
     if (input$data_form == "dataasline") {
-      p <- p+ geom_line(data=df_tidy(), aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
+      p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
     } else if (input$data_form == "dataasdot") {
-      p <- p + geom_point(data=df_tidy(), aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
+      p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
     } 
 
     if (input$summaryInput == TRUE  && input$add_CI == FALSE) {
       p <- p + geom_line(data=df_summary_mean(), aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
     } else if (input$summaryInput == TRUE  && input$add_CI == TRUE) {
-    p <- p + geom_ribbon(data=df_summary_mean(), aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
-    p <- p + geom_line(data=df_summary_mean(), aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
+      p <- p + geom_ribbon(data=df_summary_mean(), aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+      p <- p + geom_line(data=df_summary_mean(), aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
     } else if (input$summaryInput == FALSE  && input$add_CI == TRUE) {
       p <- p + geom_ribbon(data=df_summary_mean(), aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
     }
@@ -567,7 +617,8 @@ output$downloadPlotPNG <- downloadHandler(
   
   output$data_summary <- renderTable({
     
-    df_out <- message <- data.frame(Note = "Not implemented yet")
+    df_out <- message <- data.frame(Note = "Showing selected data in tidy format")
+    df_summary_mean()
   })
 ################################################
   
