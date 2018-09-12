@@ -233,10 +233,8 @@ df_upload <- reactive({
     }  else if (input$data_input == 2) {
 #      
       updateSelectInput(session, "tidyInput", selected = TRUE)
-#      data <- df_wide_example
-#      data$id <- "1"
+      data <- df_tidy_example
 
-      data <- df_tidy_example 
     } else if (input$data_input == 3) {
       if (is.null(input$upload)) {
         return(data.frame(x = "Select your datafile", Time=1,Cell=1, id=1))
@@ -277,7 +275,8 @@ df_upload <- reactive({
           })
         
       }
-  }
+    }
+
     return(data)
 })
 
@@ -325,10 +324,11 @@ observe({
   var_names  <- names(df_upload_tidy())
   var_list <- c("none", var_names)
   #        updateSelectInput(session, "colour_list", choices = var_list)
-  updateSelectInput(session, "y_var", choices = var_list)
-  updateSelectInput(session, "x_var", choices = var_list)
-  updateSelectInput(session, "c_var", choices = var_list)
-  updateSelectInput(session, "g_var", choices = var_list)
+  updateSelectInput(session, "y_var", choices = var_list, selected="Value")
+  updateSelectInput(session, "x_var", choices = var_list, selected="Time")
+  updateSelectInput(session, "c_var", choices = var_list, selected="id")
+  updateSelectInput(session, "g_var", choices = var_list, selected="Sample")
+
 })
 ################################### 
 
@@ -430,9 +430,9 @@ output$downloadPlotPNG <- downloadHandler(
 
     #Define how colors are used
     klaas <- df_selected()
-    
-    klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.factor(unique_id))
-
+    koos <- df_summary_mean()
+    klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
+    koos <- koos %>% mutate(id = as.factor(id))
     
     number_of_conditions <- nlevels(as.factor(klaas$id))
     if (number_of_conditions == 1) {
@@ -533,12 +533,12 @@ output$downloadPlotPNG <- downloadHandler(
     } 
 
     if (input$summaryInput == TRUE  && input$add_CI == FALSE) {
-      p <- p + geom_line(data=df_summary_mean(), aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
+      p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
     } else if (input$summaryInput == TRUE  && input$add_CI == TRUE) {
-      p <- p + geom_ribbon(data=df_summary_mean(), aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
-      p <- p + geom_line(data=df_summary_mean(), aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
+      p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+      p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
     } else if (input$summaryInput == FALSE  && input$add_CI == TRUE) {
-      p <- p + geom_ribbon(data=df_summary_mean(), aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+      p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
     }
     
     ########### Do some formatting of the lay-out
@@ -600,7 +600,7 @@ output$downloadPlotPNG <- downloadHandler(
 
     if (input$adjustcolors >1) {
      p <- p+ scale_color_manual(values=newColors)
-      p <- p+ scale_fill_manual(values=newColors)
+     p <- p+ scale_fill_manual(values=newColors)
     }
     
 
