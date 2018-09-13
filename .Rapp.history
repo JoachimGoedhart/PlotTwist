@@ -1,0 +1,18 @@
+shiny::runGitHub('PlotsOfDifferences', 'JoachimGoedhart')
+getwd()
+shiny::runGitHub('PlotsOfDifferences', 'JoachimGoedhart')
+getwd()
+getwd()
+df <- read.csv("Data_tidy_example_time_multi.csv")
+glimpse(df)
+library(shiny)#
+library(ggplot2)#
+library(dplyr)#
+library(tidyr)#
+library(readr)#
+library(readxl)
+glimpse(df)
+df_filter <-  df %>% filter(!is.na(Value))
+glimpse(df_filter)
+write.csv(df_filter, "Data_tidy_example_time_filtered.csv")
+names(df_filter)
