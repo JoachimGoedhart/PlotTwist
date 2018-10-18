@@ -7,6 +7,10 @@
 # The mean is displayed with user-defined visibility (alpha)
 # Inferential statistics (95%CI) can be displayed as ribbon
 ##############################################################################
+# ToDo
+# Differentiate between factors and numbers for selecting display in case of tidy data
+# Implement facetting
+# Print variables on the axis from the tidy column names
 
 library(shiny)
 library(ggplot2)
@@ -14,6 +18,7 @@ library(dplyr)
 library(tidyr)
 library(readr)
 library(readxl)
+#library(plotly)
 
 #Confidence level
 Confidence_Percentage = 95
@@ -37,7 +42,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(width=3,
                  conditionalPanel(
-                   condition = "input.tabs=='Plot'",
+                   condition = "input.tabs=='Plot' || input.tabs=='Plot-interactive'",
                    h4("Data"),
                    radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot"), selected = "dataasline"),
                    checkboxInput("thicken", "The plot thickens", value = FALSE),
@@ -166,7 +171,7 @@ ui <- fluidPage(
                                    placeholder = "Add data here",
                                    rows = 10,
                                    cols = 20, ""),
-#                     actionButton("submit_data_button", "Submit data"),
+                     actionButton("submit_data_button", "Submit data"),
                      radioButtons(
                        "text_delim", "Delimiter",
                        choices = 
@@ -206,7 +211,9 @@ ui <- fluidPage(
       tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
-                  ), 
+                  ),
+#                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
+#                  ), 
                   tabPanel("Data Summary", tableOutput('data_summary')),
                   tabPanel("About", includeHTML("about.html")
                   )
@@ -261,22 +268,28 @@ df_upload <- reactive({
         })
       }
     } else if (input$data_input == 4) {
-      if (input$data_paste == "") {
+      if (input$data_paste == "" || input$submit_data_button == 0) {
         data <- data.frame(x = "Copy your data into the textbox,
                            select the appropriate delimiter, and
-                           press 'Submit data'")
-      } else {
+                           press 'Submit data'", Time="1", id="1")
+
         
+        } else {
           isolate({
             data <- read_delim(input$data_paste,
                                delim = input$text_delim,
                                col_names = TRUE)
+            
+            #Check that data has at least 2 columns (1st is Time) and 2 rows (upper row is header)
+            if (ncol(data)<2 || nrow(data)<1) {return(data.frame(x = "Number of columns and rows should be >2", Time="1", id="1"))}
+            #The first column is defined as Time, id is added for compatibility            
+            names(data)[1] <- "Time"
             data$id <- "1"
           })
-        
+        }
       }
-    }
-
+#  }
+  
     return(data)
 })
 
@@ -426,7 +439,8 @@ output$downloadPlotPNG <- downloadHandler(
  ###############################################
 ############## GENERATE PLOT LAYERS #############      
         
-  output$coolplot <- renderPlot(width = width, height = height, {
+
+plot_data <- reactive({
 
     #Define how colors are used
     klaas <- df_selected()
@@ -609,7 +623,16 @@ output$downloadPlotPNG <- downloadHandler(
   }) #close output$coolplot
 
  ###############################################
-  
+# output$plot_interact <- renderPlotly({
+# 
+#   ggplotly(plot_data(), height=as.numeric(input$plot_height), width=as.numeric(input$plot_width))
+#   
+# })
+
+output$coolplot <- renderPlot(width = width, height = height, {     
+
+  plot_data()
+}) #close output$coolplot
 
     
  ################################################

@@ -2,7 +2,6 @@ shiny::runGitHub('PlotsOfDifferences', 'JoachimGoedhart')
 getwd()
 shiny::runGitHub('PlotsOfDifferences', 'JoachimGoedhart')
 getwd()
-getwd()
 df <- read.csv("Data_tidy_example_time_multi.csv")
 glimpse(df)
 library(shiny)#
