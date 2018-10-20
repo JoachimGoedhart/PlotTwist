@@ -46,6 +46,7 @@ ui <- fluidPage(
                    h4("Data"),
                    radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot"), selected = "dataasline"),
                    checkboxInput("thicken", "The plot thickens", value = FALSE),
+                   checkboxInput("multiples", "Small multiples", value = FALSE),
                    
                    sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
                    h4("Statistics"),
@@ -617,6 +618,10 @@ plot_data <- reactive({
      p <- p+ scale_fill_manual(values=newColors)
     }
     
+    if (input$multiples == TRUE) {
+      p <- p+ facet_wrap(~unique_id)
+      p <- p + theme(strip.background = element_blank(), strip.text.y = element_blank(),panel.spacing.y = unit(-1, "lines"),panel.spacing.x = unit(.8, "lines"))
+    }
 
     p
     
