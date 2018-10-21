@@ -620,7 +620,9 @@ plot_data <- reactive({
     
     if (input$multiples == TRUE) {
       p <- p+ facet_wrap(~unique_id)
-      p <- p + theme(strip.background = element_blank(), strip.text.y = element_blank(),panel.spacing.y = unit(-1, "lines"),panel.spacing.x = unit(.8, "lines"))
+      
+      #Remove the strip above the individual panels
+      p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.5, "lines"),panel.spacing.x = unit(.5, "lines"))
     }
 
     p
