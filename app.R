@@ -619,10 +619,14 @@ plot_data <- reactive({
     }
     
     if (input$multiples == TRUE) {
-      p <- p+ facet_wrap(~unique_id)
-      
-      #Remove the strip above the individual panels
-      p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.5, "lines"),panel.spacing.x = unit(.5, "lines"))
+      if (number_of_conditions == 1) {
+                  p <- p+ facet_wrap(~unique_id)
+                  #Remove the strip above the individual panels
+                  p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.5, "lines"),panel.spacing.x = unit(.5, "lines"))
+      } else if (number_of_conditions > 1) {
+                    p <- p+ facet_grid(id~.)
+      }
+                    
     }
 
     p
