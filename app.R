@@ -9,7 +9,7 @@
 ##############################################################################
 # ToDo
 # Differentiate between factors and numbers for selecting display in case of tidy data
-# Implement facetting
+# Implement heatmap with adjustable scales and binning
 # Print variables on the axis from the tidy column names
 
 library(shiny)
@@ -196,7 +196,56 @@ ui <- fluidPage(
 
                     )
                  ),
-                 
+                  conditionalPanel(
+                    condition = "input.tabs=='Heatmap'",
+                    h4("Heatmap"),
+                    
+                    
+  ####################### UI Panel for Heatmap ###############
+                    
+                    
+                    
+                    h4("Statistics"),
+                    checkboxInput("summaryInput", "Show the mean", value=FALSE),
+                    #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
+                    checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
+                    
+                    h4("Plot Layout"),
+                    checkboxInput(inputId = "add_legend2",
+                                  label = "Add Legend",
+                                  value = TRUE),
+                    checkboxInput(inputId = "indicate_stim2",
+                                  label = "Indicate Baseline/Stimulus",
+                                  value = FALSE),
+                    
+                    conditionalPanel(
+                      condition = "input.indicate_stim2 == true",
+                      textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146")),
+                    checkboxInput(inputId = "no_grid",
+                                  label = "Remove gridlines",
+                                  value = FALSE),
+                    
+                    checkboxInput(inputId = "adjust_scale2",
+                                  label = "Adjust scale",
+                                  value = FALSE),
+                    conditionalPanel(
+                      condition = "input.adjust_scale2 == true",
+                      textInput("range_x", "Range x-axis (min,max)", value = "0,10")
+                      
+                    ),
+                    conditionalPanel(
+                      condition = "input.adjust_scale2 == true",
+                      textInput("range_y", "Range y-axis (min,max)", value = "0,2")
+                      
+                    ),
+                    NULL  ####### End of heatmap UI#######
+  
+              ),
+                    
+                    
+                    
+                    
+                
                  conditionalPanel(
                    condition = "input.tabs=='About'",
                    h4("About")    
@@ -213,9 +262,12 @@ ui <- fluidPage(
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ),
+                  tabPanel("Heatmap", plotOutput("plot_heatmap")
+                           ),
 #                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
 #                  ), 
                   tabPanel("Data Summary", tableOutput('data_summary')),
+ #                 tabPanel("Heatmap", plotOutput("plot_heatmap")),
                   tabPanel("About", includeHTML("about.html")
                   )
                   
@@ -437,6 +489,40 @@ output$downloadPlotPNG <- downloadHandler(
  ###########################################  
 
 
+plot_map <- reactive({
+
+  klaas <- df_selected()
+  koos <- df_summary_mean()
+  klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
+  koos <- koos %>% mutate(id = as.factor(id))
+  
+  #### Command to prepare the plot ####
+  p <- ggplot(data=klaas, aes_string(x="Time"))
+  p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value")) 
+  #+ scale_fill_viridis_c()
+  
+  ########### Do some formatting of the lay-out
+  
+  p <- p+ theme_minimal(base_size = 16)
+  
+  #remove legend (if selected)
+  if (input$add_legend2 == FALSE) {  
+    p <- p + theme(legend.position="none")
+  }
+  
+  #remove gridlines
+    p <- p+ theme(panel.border = element_blank(),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
+                  axis.ticks = element_line(colour = "grey20"), 
+ #                 axis.line = element_line(size = 0.1, linetype = "solid", colour = "black"),
+                  NULL)
+
+  p
+  
+  
+})
+
  ###############################################
 ############## GENERATE PLOT LAYERS #############      
         
@@ -481,16 +567,6 @@ plot_data <- reactive({
       newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
     }
            
-      ########## Define kleur
-      #    observe({ print(class(input$colour_list)) })
-      # if (input$color_data == FALSE) {
-      #   kleur_data <- NULL
-      # } else if (input$color_data == TRUE && input$color_choice==1) {
-      #   kleur_data <- "id"
-      # } else if (input$color_data == TRUE && input$color_choice==2) {
-      #   kleur_data <- "unique_id"
-      # }
-    
     ########## Define how color is mapped onto the data
     #    observe({ print(class(input$colour_list)) })
     if (input$color_stats == FALSE) {
@@ -498,38 +574,8 @@ plot_data <- reactive({
     } else if (input$color_stats == TRUE) {
       kleur_stats <- "id"
     } 
-
-    #   ########## Set default to Plotting "Time" and "Value"
-    #   if (input$x_var == "none") {
-    #     x_choice <- "Time"
-    #   } else if (input$x_var != "none") {
-    #     x_choice <- as.character(input$x_var)
-    #   }
-    # 
-    #   if (input$y_var == "none") {
-    #     y_choice <- "Value"
-    #   } else if (input$y_var != "none") {
-    #     y_choice <- as.character(input$y_var)
-    #   }
-    # 
-    # #Define how each experimental condition is identified
-    # if (input$c_var == "none") {
-    #   c_choice <- "id"
-    # } else if (input$x_var != "none") {
-    #   c_choice <- as.character(input$c_var)
-    # }
-    # 
-    # #Define how each individual measurement is identified
-    # if (input$g_var == "none") {
-    #   g_choice <- "unique_id"
-    # } else if (input$x_var != "none") {
-    #   g_choice <- as.character(input$g_var)
-    # }
-
     
     #### Command to prepare the plot ####
-#    p <- ggplot(df_upload_tidy(), aes(x=Time))
- 
     p <- ggplot(data=klaas, aes_string(x="Time")) 
     
          
@@ -644,6 +690,12 @@ output$coolplot <- renderPlot(width = width, height = height, {
 
   plot_data()
 }) #close output$coolplot
+
+
+output$plot_heatmap <- renderPlot(width = width, height = height, {     
+  
+  plot_map()
+}) #close output$heatmap
 
     
  ################################################
