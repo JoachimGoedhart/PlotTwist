@@ -73,12 +73,12 @@ ui <- fluidPage(
                                  value = FALSE),
                    conditionalPanel(
                      condition = "input.adjust_scale == true",
-                     textInput("range_x", "Range x-axis (min,max)", value = "0,10")
+                     textInput("range_x", "Range x-axis (min,max)", value = "")
                      
                    ),
                    conditionalPanel(
                      condition = "input.adjust_scale == true",
-                     textInput("range_y", "Range y-axis (min,max)", value = "0,2")
+                     textInput("range_y", "Range y-axis (min,max)", value = "")
                      
                    ),
                    
@@ -205,37 +205,35 @@ ui <- fluidPage(
                     
                     
                     
-                    h4("Statistics"),
-                    checkboxInput("summaryInput", "Show the mean", value=FALSE),
-                    #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
-                    checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
-                    
                     h4("Plot Layout"),
                     checkboxInput(inputId = "add_legend2",
                                   label = "Add Legend",
                                   value = TRUE),
-                    checkboxInput(inputId = "indicate_stim2",
-                                  label = "Indicate Baseline/Stimulus",
-                                  value = FALSE),
-                    
-                    conditionalPanel(
-                      condition = "input.indicate_stim2 == true",
-                      textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146")),
-                    checkboxInput(inputId = "no_grid",
-                                  label = "Remove gridlines",
-                                  value = FALSE),
-                    
+                    # checkboxInput(inputId = "indicate_stim2",
+                    #               label = "Indicate Baseline/Stimulus",
+                    #               value = FALSE),
+                    # 
+                    # conditionalPanel(
+                    #   condition = "input.indicate_stim2 == true",
+                    #   textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146")),
+                    # checkboxInput(inputId = "no_grid",
+                    #               label = "Remove gridlines",
+                    #               value = FALSE),
+                    # 
+  
+                    numericInput("heatmap_height", "Height (# pixels): ", value = 480),
+                    numericInput("heatmap_width", "Width (# pixels):", value = 600),
+  
                     checkboxInput(inputId = "adjust_scale2",
-                                  label = "Adjust scale",
-                                  value = FALSE),
+                                  label = "Adjust scale", value=FALSE),
                     conditionalPanel(
                       condition = "input.adjust_scale2 == true",
-                      textInput("range_x", "Range x-axis (min,max)", value = "0,10")
+                      textInput("range_x2", "Range temporal axis (min,max)", value = "")
                       
                     ),
                     conditionalPanel(
                       condition = "input.adjust_scale2 == true",
-                      textInput("range_y", "Range y-axis (min,max)", value = "0,2")
+                      textInput("range_y2", "Range of the signal (min,max)", value = "")
                       
                     ),
                     NULL  ####### End of heatmap UI#######
@@ -262,7 +260,7 @@ ui <- fluidPage(
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ),
-                  tabPanel("Heatmap", plotOutput("plot_heatmap")
+                  tabPanel("Heatmap", h4("UNDER DEVELOPMENT"), plotOutput("plot_heatmap")
                            ),
 #                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
 #                  ), 
@@ -279,7 +277,44 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
+  ####################################################################
+##################### Synchronize scales between tabs ##################  
   
+observeEvent(input$adjust_scale, {  
+  if (input$adjust_scale==TRUE)  {
+    updateCheckboxInput(session, "adjust_scale2", value = TRUE)
+  } else if (input$adjust_scale==FALSE)   {
+    updateCheckboxInput(session, "adjust_scale2", value = FALSE)
+  }
+})
+ 
+observeEvent(input$adjust_scale2, {  
+  if (input$adjust_scale2==TRUE)  {
+    updateCheckboxInput(session, "adjust_scale", value = TRUE)
+  } else if (input$adjust_scale2==FALSE)   {
+    updateCheckboxInput(session, "adjust_scale", value = FALSE)
+  }
+})
+  
+# observeEvent(input$range_x, {  
+#   updateTextInput(session, "range_x2", value = input$range_x)
+# })
+# observeEvent(input$range_y, {  
+#   updateTextInput(session, "range_y2", value = input$range_y)
+# })
+
+# observeEvent(input$range_x2, {  
+#   updateTextInput(session, "range_x", value = input$range_x2)
+# })
+# observeEvent(input$range_y2, {  
+#   updateTextInput(session, "range_y", value = input$range_y2)
+# })
+
+####################################################################
+
+
+    
+    
   
   #####################################
   ###### READ IN / GET DATA ###########
@@ -464,24 +499,38 @@ df_summary_mean <- reactive({
 width <- reactive ({ input$plot_width })
 height <- reactive ({ input$plot_height })
 
+
+
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
-    paste("TimeseriesPlot_", Sys.time(), ".pdf", sep = "")
+    paste("PlotTwist_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
-    ggsave(file, width = input$plot_width/72,
-           height = input$plot_height/72, dpi="retina")
+    pdf(file, width = input$myWidth/72, height = input$myHeight/72)
+    ## ---------------
+    plot(plot_data())
+    ## ---------------
+    dev.off()
+    # ggsave(file, width = input$plot_width/72,
+    #        height = input$plot_height/72, dpi="retina")
   },
   contentType = "application/pdf" # MIME type of the image
 )
 
 output$downloadPlotPNG <- downloadHandler(
   filename <- function() {
-    paste("TimeseriesPlot_", Sys.time(), ".png", sep = "")
+    paste("PlotTwist", Sys.time(), ".png", sep = "")
   },
   content <- function(file) {
-    ggsave(file, width = input$plot_width/72,
-           height = input$plot_height/72)
+    png(file, width = input$plot_width*4, height = input$plot_height*4, res=300)
+    ## ---------------
+    plot(plot_data())
+    ## ---------------
+    dev.off()
+    
+    
+    # ggsave(file, width = input$plot_width/72,
+    #        height = input$plot_height/72)
   },
   contentType = "application/png" # MIME type of the image
 )
@@ -496,11 +545,25 @@ plot_map <- reactive({
   klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
   koos <- koos %>% mutate(id = as.factor(id))
   
+
+  
+  
+  
   #### Command to prepare the plot ####
   p <- ggplot(data=klaas, aes_string(x="Time"))
-  p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value")) 
-  #+ scale_fill_viridis_c()
-  
+  p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))  
+#  + scale_fill_viridis_c()
+    
+    
+  if (input$adjust_scale == TRUE) {
+      rng_x <- as.numeric(strsplit(input$range_x2,",")[[1]])
+      p <- p + xlim(rng_x[1],rng_x[2])  
+      
+      rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
+      p <- p +  scale_fill_gradient(low="blue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
+
+  } else if (input$adjust_scale == FALSE) {p <- p+ scale_fill_gradient(low="blue", high="yellow")}
+    
   ########### Do some formatting of the lay-out
   
   p <- p+ theme_minimal(base_size = 16)
@@ -675,7 +738,7 @@ plot_data <- reactive({
                     
     }
 
-    p
+    return(p)
     
   }) #close output$coolplot
 
@@ -688,13 +751,18 @@ plot_data <- reactive({
 
 output$coolplot <- renderPlot(width = width, height = height, {     
 
-  plot_data()
+  plot(plot_data())
 }) #close output$coolplot
 
 
-output$plot_heatmap <- renderPlot(width = width, height = height, {     
+
+heatmap_width <- reactive ({ input$heatmap_width })
+heatmap_height <- reactive ({ input$heatmap_height })
+
+
+output$plot_heatmap <- renderPlot(width = heatmap_width, height = heatmap_height, {     
   
-  plot_map()
+  plot(plot_map())
 }) #close output$heatmap
 
     
