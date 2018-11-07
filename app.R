@@ -18,6 +18,7 @@ library(dplyr)
 library(tidyr)
 library(readr)
 library(readxl)
+library(DT)
 #library(plotly)
 
 #Confidence level
@@ -228,6 +229,8 @@ ui <- fluidPage(
                                   label = "Adjust scale", value=FALSE),
                     conditionalPanel(
                       condition = "input.adjust_scale2 == true",
+                      actionButton('range_lineplot','Copy range from lineplot'),
+
                       textInput("range_x2", "Range temporal axis (min,max)", value = "")
                       
                     ),
@@ -236,6 +239,8 @@ ui <- fluidPage(
                       textInput("range_y2", "Range of the signal (min,max)", value = "")
                       
                     ),
+                    selectInput("binning", "Binning of x-axis (1=no binning):", choices=c("1", "2", "4", "8", "16", "32", "64", "128")),
+
                     NULL  ####### End of heatmap UI#######
   
               ),
@@ -296,6 +301,14 @@ observeEvent(input$adjust_scale2, {
   }
 })
   
+
+observeEvent(input$range_lineplot, {
+  updateTextInput(session, "range_x2", value = input$range_x)
+  updateTextInput(session, "range_y2", value = input$range_y)
+  
+})
+
+
 # observeEvent(input$range_x, {  
 #   updateTextInput(session, "range_x2", value = input$range_x)
 # })
@@ -466,17 +479,69 @@ df_selected <- reactive({
     
     koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
   }
-  
+  observe({ print(head(koos)) })
   return(koos)
 })
 ###########################################################  
 
 
+#################################
+######## Binning x-axis #########
+
+
+df_binned <- reactive ({
+
+  max_bin <- df_selected() %>% group_by(unique_id) %>% summarise(n=n()) %>% summarise(max(n)) %>% unlist() %>% as.numeric()
+  updateSliderInput(session, "binning", min=1, max=max_bin)
+
+  bin_factor <- as.numeric(input$binning)
+  
+  if (bin_factor != 1) {
+
+
+    number_of_x_values <- trunc(max_bin/bin_factor)
+
+######## FULL TIDY variant ##########
+    df <- df_selected() %>% group_by(unique_id) %>% mutate(bin_id = trunc((row_number(Time)-1)/bin_factor))
+    
+
+    
+    df_binned <- df %>% group_by(unique_id, bin_id,id) %>% summarise(Value=mean(Value), Time=mean(Time)) %>% ungroup()
+
+# Remove binds that are not completely filled
+    df_binned <- df_binned %>% group_by(unique_id,id) %>% slice(1:number_of_x_values) %>% ungroup()
+
+
+  } else {df_binned <- df_selected()}
+  
+  return(df_binned)
+
+})
+
+#################################
+
+
+
+############################
+######## NORMALIZE #########
+
+
+df_normalized <- reactive ({
+  
+  baseline <- 3
+  
+  koos <- df_selected() %>%
+    group_by(unique_id, id) %>% 
+    mutate(nValue=Value/mean(Value[1:baseline]))
+  
+})
+############################
+
 ##################################################
 #### Caluclate Summary of the DATA for the MEAN ####
 
 df_summary_mean <- reactive({
-  koos <- df_selected() %>%
+  koos <- df_binned() %>%
     group_by(Time, id) %>% 
     summarise(n = n(),
               mean = mean(Value, na.rm = TRUE),
@@ -540,19 +605,17 @@ output$downloadPlotPNG <- downloadHandler(
 
 plot_map <- reactive({
 
-  klaas <- df_selected()
+  klaas <- df_binned()
   koos <- df_summary_mean()
   klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
   koos <- koos %>% mutate(id = as.factor(id))
   
-
-  
-  
-  
   #### Command to prepare the plot ####
   p <- ggplot(data=klaas, aes_string(x="Time"))
+  
   p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))  
 #  + scale_fill_viridis_c()
+#  + scale_fill_viridis(name = "",limits = c(0.5,1.1))
     
     
   if (input$adjust_scale == TRUE) {
@@ -560,9 +623,9 @@ plot_map <- reactive({
       p <- p + xlim(rng_x[1],rng_x[2])  
       
       rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
-      p <- p +  scale_fill_gradient(low="blue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
+      p <- p +  scale_fill_gradient(low="darkblue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
 
-  } else if (input$adjust_scale == FALSE) {p <- p+ scale_fill_gradient(low="blue", high="yellow")}
+  } else if (input$adjust_scale == FALSE) {p <- p+ scale_fill_gradient(low="darkblue", high="yellow")}
     
   ########### Do some formatting of the lay-out
   
@@ -593,7 +656,7 @@ plot_map <- reactive({
 plot_data <- reactive({
 
     #Define how colors are used
-    klaas <- df_selected()
+    klaas <- df_binned()
     koos <- df_summary_mean()
     klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
     koos <- koos %>% mutate(id = as.factor(id))
@@ -609,10 +672,6 @@ plot_data <- reactive({
       kleur_data <- NULL
     }
  
-    #Define the palette that is used, if different from default
-    #     newColors <- Tol_bright
-    #      newColors <- Tol_muted
-    #      newColors <- Tol_vibrant
     newColors <- NULL
     
     if (input$adjustcolors == 2) {
