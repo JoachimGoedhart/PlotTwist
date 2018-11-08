@@ -19,6 +19,8 @@ library(tidyr)
 library(readr)
 library(readxl)
 library(DT)
+
+##### Uncomment for interactive graph panel
 #library(plotly)
 
 #Confidence level
@@ -195,7 +197,18 @@ ui <- fluidPage(
                       selectInput("g_var", "Identifier of single measurement", choices = ""),
                       selectInput("c_var", "Identifier of condition", choices = "")
 
-                    ), textInput("base_range", "Define baseline range (start,end)", value = "")
+                    ),
+                   h4("Normalization"),
+                   checkboxInput(inputId = "normalization",
+                                 label = "Data normalization",
+                                 value = FALSE),
+                   conditionalPanel(condition = "input.normalization==true",
+                        radioButtons("norm_type", "Method:", choices = list("Fold change over baseline (I/I0)" = "fold", "Difference from baseline (I-I0)" = "diff", "Difference divided by baseline (delta(I-I0)/I0)" = "perc", "Divide by maximal value" = "max", "Divide by minimal value" = "min"), selected = "fold"),
+                        
+                        conditionalPanel(
+                          condition = "input.norm_type=='fold' || input.norm_type=='perc' || input.norm_type=='diff' ",     
+                        textInput("base_range", "Define baseline (start,end)", value = "1,5"))
+                        )
                  ),
                   conditionalPanel(
                     condition = "input.tabs=='Heatmap'",
@@ -264,10 +277,11 @@ ui <- fluidPage(
                   ),
                   tabPanel("Heatmap", h4("UNDER DEVELOPMENT"), plotOutput("plot_heatmap")
                            ),
+##### Uncomment for interactive graph panel
 #                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
 #                  ), 
                   tabPanel("Data Summary", tableOutput('data_summary')),
- #                 tabPanel("Heatmap", plotOutput("plot_heatmap")),
+
                   tabPanel("About", includeHTML("about.html")
                   )
                   
@@ -520,13 +534,15 @@ df_binned <- reactive ({
 
 df_normalized <- reactive ({
   
-  baseline <- input$base_range
 #  observe({ print(baseline) })
-  if (baseline!="") {
+  if (input$normalization==TRUE) {
+
+    #Get the values that determine the baseline
+    baseline <- input$base_range
     baseline_range <- as.numeric(strsplit(input$base_range,",")[[1]])
     base_start <- baseline_range[1]
 
-    #In case only one value is givenfor normalization   
+    #In case only one value is given for normalization   
     if (length(baseline_range) ==1) {
       base_end <- base_start
     
@@ -534,12 +550,40 @@ df_normalized <- reactive ({
     } else {
       base_end <- baseline_range[2]
     }
-#    observe({ print(base_end) })    
-    koos <- df_selected() %>%
+
+    #Now get started with the actual normalization    
+    
+#    observe({ print(base_end) })
+    if (input$norm_type == "fold"){
+      koos <- df_selected() %>%
         group_by(unique_id) %>% 
         mutate(Value=Value/mean(Value[base_start:base_end])) %>% ungroup()
- 
-  } else {koos <- df_selected()}
+      
+    } else if (input$norm_type == "perc"){
+      koos <- df_selected() %>%
+        group_by(unique_id) %>% 
+        mutate(Value= (Value/mean(Value[base_start:base_end]))-1) %>% ungroup()
+      
+    } else if (input$norm_type == "diff"){
+      koos <- df_selected() %>%
+        group_by(unique_id) %>% 
+        mutate(Value=Value-mean(Value[base_start:base_end])) %>% ungroup()
+      
+     } else if (input$norm_type == "max"){
+      koos <- df_selected() %>%
+        group_by(unique_id) %>% 
+        mutate(Value=Value/max(Value)) %>% ungroup()
+      
+     } else if (input$norm_type == "min"){
+       koos <- df_selected() %>%
+         group_by(unique_id) %>% 
+         mutate(Value=Value/min(Value)) %>% ungroup()
+       
+     }
+
+  #No Normalization# 
+  } else {
+    koos <- df_selected()}
   return(koos)
 
   
@@ -810,12 +854,11 @@ plot_data <- reactive({
     
   }) #close output$coolplot
 
- ###############################################
+##### Uncomment for interactive graph panel
 # output$plot_interact <- renderPlotly({
-# 
 #   ggplotly(plot_data(), height=as.numeric(input$plot_height), width=as.numeric(input$plot_width))
-#   
 # })
+
 
 output$coolplot <- renderPlot(width = width, height = height, {     
 
