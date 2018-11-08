@@ -195,7 +195,7 @@ ui <- fluidPage(
                       selectInput("g_var", "Identifier of single measurement", choices = ""),
                       selectInput("c_var", "Identifier of condition", choices = "")
 
-                    )
+                    ), textInput("base_range", "Define baseline range (start,end)", value = "")
                  ),
                   conditionalPanel(
                     condition = "input.tabs=='Heatmap'",
@@ -239,16 +239,13 @@ ui <- fluidPage(
                       textInput("range_y2", "Range of the signal (min,max)", value = "")
                       
                     ),
-                    selectInput("binning", "Binning of x-axis (1=no binning):", choices=c("1", "2", "4", "8", "16", "32", "64", "128")),
+                    numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
 
                     NULL  ####### End of heatmap UI#######
   
               ),
                     
-                    
-                    
-                    
-                
+
                  conditionalPanel(
                    condition = "input.tabs=='About'",
                    h4("About")    
@@ -491,31 +488,26 @@ df_selected <- reactive({
 
 df_binned <- reactive ({
 
-  max_bin <- df_selected() %>% group_by(unique_id) %>% summarise(n=n()) %>% summarise(max(n)) %>% unlist() %>% as.numeric()
+  max_bin <- df_normalized() %>% group_by(unique_id) %>% summarise(n=n()) %>% summarise(max(n)) %>% unlist() %>% as.numeric()
   updateSliderInput(session, "binning", min=1, max=max_bin)
 
   bin_factor <- as.numeric(input$binning)
   
   if (bin_factor != 1) {
 
-
-    number_of_x_values <- trunc(max_bin/bin_factor)
-
-######## FULL TIDY variant ##########
-    df <- df_selected() %>% group_by(unique_id) %>% mutate(bin_id = trunc((row_number(Time)-1)/bin_factor))
+    #add a coumn with number to assign the bins
+    df <- df_normalized() %>% group_by(unique_id) %>% mutate(bin_id = trunc((row_number(Time)-1)/bin_factor))
     
-
-    
+    #use the column with bins to generate a summary, effectively combining the data
     df_binned <- df %>% group_by(unique_id, bin_id,id) %>% summarise(Value=mean(Value), Time=mean(Time)) %>% ungroup()
 
-# Remove binds that are not completely filled
+# Remove the last bin is it is not completely filled (needed for correct visualization of the heatmap)
+    number_of_x_values <- trunc(max_bin/bin_factor)
     df_binned <- df_binned %>% group_by(unique_id,id) %>% slice(1:number_of_x_values) %>% ungroup()
 
-
-  } else {df_binned <- df_selected()}
+  } else {df_binned <- df_normalized()}
   
   return(df_binned)
-
 })
 
 #################################
@@ -528,11 +520,28 @@ df_binned <- reactive ({
 
 df_normalized <- reactive ({
   
-  baseline <- 3
-  
-  koos <- df_selected() %>%
-    group_by(unique_id, id) %>% 
-    mutate(nValue=Value/mean(Value[1:baseline]))
+  baseline <- input$base_range
+#  observe({ print(baseline) })
+  if (baseline!="") {
+    baseline_range <- as.numeric(strsplit(input$base_range,",")[[1]])
+    base_start <- baseline_range[1]
+
+    #In case only one value is givenfor normalization   
+    if (length(baseline_range) ==1) {
+      base_end <- base_start
+    
+    #In case a range is given for normalization
+    } else {
+      base_end <- baseline_range[2]
+    }
+#    observe({ print(base_end) })    
+    koos <- df_selected() %>%
+        group_by(unique_id) %>% 
+        mutate(Value=Value/mean(Value[base_start:base_end])) %>% ungroup()
+ 
+  } else {koos <- df_selected()}
+  return(koos)
+
   
 })
 ############################
