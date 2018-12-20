@@ -9,7 +9,6 @@
 ##############################################################################
 # ToDo
 # Differentiate between factors and numbers for selecting display in case of tidy data
-# Implement heatmap with adjustable scales and binning
 # Print variables on the axis from the tidy column names
 
 library(shiny)
@@ -203,11 +202,22 @@ ui <- fluidPage(
                                  label = "Data normalization",
                                  value = FALSE),
                    conditionalPanel(condition = "input.normalization==true",
-                        radioButtons("norm_type", "Method:", choices = list("Fold change over baseline (I/I0)" = "fold", "Difference from baseline (I-I0)" = "diff", "Difference divided by baseline (delta(I-I0)/I0)" = "perc", "Divide by maximal value" = "max", "Divide by minimal value" = "min"), selected = "fold"),
+                        radioButtons("norm_type",
+                                     "Method:",
+                                     choices = list("Divide by maximal value" = "max",
+                                                    "Divide by minimal value" = "min", 
+                                                    "Rescale between 0 and 1" = "zero_one", 
+                                                    "Divide by area/integrated response (I/sum(I))" = "integral", 
+                                                    "Difference from baseline (I-I0)" = "diff",
+                                                    "Z-score ((I-I0)/SD(I0))" = "z-score",
+                                                    "Difference divided by baseline ((I-I0)/I0)" = "perc",
+                                                    "Fold change over baseline (I/I0)" = "fold"),
+
+                                     selected = "fold"),
                         
                         conditionalPanel(
-                          condition = "input.norm_type=='fold' || input.norm_type=='perc' || input.norm_type=='diff' ",     
-                        textInput("base_range", "Define baseline (start,end)", value = "1,5"))
+                          condition = "input.norm_type=='fold' || input.norm_type=='perc' || input.norm_type=='diff' || input.norm_type=='z-score' ",     
+                        textInput("base_range", "Define baseline by rownumbers (start,end)", value = "1,5"))
                         )
                  ),
                   conditionalPanel(
@@ -253,6 +263,10 @@ ui <- fluidPage(
                       
                     ),
                     numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
+                    radioButtons(inputId = "ordered",
+                                 label= "Order of the lines:",
+                                 choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int"),
+                                 selected = "none"),
 
                     NULL  ####### End of heatmap UI#######
   
@@ -275,7 +289,8 @@ ui <- fluidPage(
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ),
-                  tabPanel("Heatmap", h4("UNDER DEVELOPMENT"), plotOutput("plot_heatmap")
+                  tabPanel("Heatmap", downloadButton("downloadHeatmapPDF", "Download pdf-file"), downloadButton("downloadHeatmapPNG", "Download png-file"),
+                           h4("UNDER DEVELOPMENT"), plotOutput("plot_heatmap")
                            ),
 ##### Uncomment for interactive graph panel
 #                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
@@ -554,30 +569,54 @@ df_normalized <- reactive ({
     #Now get started with the actual normalization    
     
 #    observe({ print(base_end) })
+    
+    #Divided by baseline (baseline set to 1)
     if (input$norm_type == "fold"){
       koos <- df_selected() %>%
         group_by(unique_id) %>% 
         mutate(Value=Value/mean(Value[base_start:base_end])) %>% ungroup()
-      
+ 
+    #Divide by baseline and subtract 1 (baseline set to 0)  
     } else if (input$norm_type == "perc"){
       koos <- df_selected() %>%
         group_by(unique_id) %>% 
         mutate(Value= (Value/mean(Value[base_start:base_end]))-1) %>% ungroup()
-      
+
+    #Subtract baseline (baseline set to 0)      
     } else if (input$norm_type == "diff"){
       koos <- df_selected() %>%
         group_by(unique_id) %>% 
         mutate(Value=Value-mean(Value[base_start:base_end])) %>% ungroup()
-      
+
+    #divide by maximal value
      } else if (input$norm_type == "max"){
       koos <- df_selected() %>%
         group_by(unique_id) %>% 
         mutate(Value=Value/max(Value)) %>% ungroup()
       
+    #divide by minimum value
      } else if (input$norm_type == "min"){
        koos <- df_selected() %>%
          group_by(unique_id) %>% 
          mutate(Value=Value/min(Value)) %>% ungroup()
+
+    #Scale between zero and one      
+     } else if (input$norm_type == "zero_one"){
+       koos <- df_selected() %>%
+         group_by(unique_id) %>% 
+         mutate(Value=(Value-min(Value))/(max(Value)-min(Value))) %>% ungroup()
+       
+    #Z-score (relative to baseline)
+     } else if (input$norm_type == "z-score"){
+       koos <- df_selected() %>%
+         group_by(unique_id) %>% 
+         mutate(Value=(Value-mean(Value[base_start:base_end]))/sd(Value[base_start:base_end]) ) %>% ungroup()
+       
+    #divide by integrated response
+     } else if (input$norm_type == "integral"){
+       koos <- df_selected() %>%
+         group_by(unique_id) %>% 
+         mutate(Value=Value/sum(Value)) %>% ungroup()
        
      }
 
@@ -589,6 +628,45 @@ df_normalized <- reactive ({
   
 })
 ############################
+
+
+ ###########################################################  
+######## Determine and set the order of the Conditions #######  
+ordered_list <- reactive({
+  
+  #  klaas <- df_upload_tidy()
+  klaas <-  df_normalized()
+  
+  if(input$ordered == "max_int") {
+    reordered_list <- reorder(klaas$unique_id, klaas$Value, max, na.rm = TRUE)
+    
+  } else if (input$ordered == "none") {
+    reordered_list <- factor(klaas$unique_id, levels=unique(klaas$unique_id))
+    
+  } else if (input$ordered == "int_int") {
+    reordered_list <- reorder(klaas$unique_id, klaas$Value, sum, na.rm = TRUE)
+    
+  }  else if (input$ordered == "amplitude") {
+
+    #Determine a ranking based on amplitude = max-min
+    df_rank <- klaas %>% group_by(unique_id) %>% summarise(amplitude=max(Value)-min(Value)) %>% mutate(rank=percent_rank(amplitude))
+
+    reordered_list <- reorder(df_rank$unique_id, df_rank$rank)
+  }
+  
+
+  ordered_list <- levels(reordered_list)
+#  observe({ print(ordered_list) })
+  
+  return(ordered_list)
+  
+})
+
+########################################################### 
+
+
+
+
 
 ##################################################
 #### Caluclate Summary of the DATA for the MEAN ####
@@ -613,24 +691,14 @@ df_summary_mean <- reactive({
  ###########################################
 ######### DEFINE DOWNLOAD BUTTONS ###########
 
-##### Set width and height of the plot area
-width <- reactive ({ input$plot_width })
-height <- reactive ({ input$plot_height })
-
-
-
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
     paste("PlotTwist_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
     pdf(file, width = input$myWidth/72, height = input$myHeight/72)
-    ## ---------------
     plot(plot_data())
-    ## ---------------
     dev.off()
-    # ggsave(file, width = input$plot_width/72,
-    #        height = input$plot_height/72, dpi="retina")
   },
   contentType = "application/pdf" # MIME type of the image
 )
@@ -641,14 +709,34 @@ output$downloadPlotPNG <- downloadHandler(
   },
   content <- function(file) {
     png(file, width = input$plot_width*4, height = input$plot_height*4, res=300)
-    ## ---------------
     plot(plot_data())
-    ## ---------------
     dev.off()
-    
-    
-    # ggsave(file, width = input$plot_width/72,
-    #        height = input$plot_height/72)
+  },
+  contentType = "application/png" # MIME type of the image
+)
+
+######### FOR HEATMAP ###########
+
+output$downloadHeatmapPDF <- downloadHandler(
+  filename <- function() {
+    paste("PlotTwist_", Sys.time(), ".pdf", sep = "")
+  },
+  content <- function(file) {
+    pdf(file, width = input$heatmap_width/72, height = input$heatmap_height/72)
+    plot(plot_map())
+    dev.off()
+  },
+  contentType = "application/pdf" # MIME type of the image
+)
+
+output$downloadHeatmapPNG <- downloadHandler(
+  filename <- function() {
+    paste("PlotTwist", Sys.time(), ".png", sep = "")
+  },
+  content <- function(file) {
+    png(file, width = input$heatmap_width*4, height = input$heatmap_height*4, res=300)
+    plot(plot_map())
+    dev.off()
   },
   contentType = "application/png" # MIME type of the image
 )
@@ -658,6 +746,12 @@ output$downloadPlotPNG <- downloadHandler(
 
 plot_map <- reactive({
 
+  ####### Read the order from the ordered list #############  
+  custom_order <- ordered_list()
+#  observe({ print(custom_order) })  
+  ########################################
+  #### #Need to connect order to plotting via scale_discrete
+  
   klaas <- df_binned()
   koos <- df_summary_mean()
   klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
@@ -669,7 +763,9 @@ plot_map <- reactive({
   p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))  
 #  + scale_fill_viridis_c()
 #  + scale_fill_viridis(name = "",limits = c(0.5,1.1))
-    
+
+    # Setting the order of the x-axis
+  p <- p + scale_y_discrete(limits=custom_order)
     
   if (input$adjust_scale == TRUE) {
       rng_x <- as.numeric(strsplit(input$range_x2,",")[[1]])
@@ -859,20 +955,19 @@ plot_data <- reactive({
 #   ggplotly(plot_data(), height=as.numeric(input$plot_height), width=as.numeric(input$plot_width))
 # })
 
+##### Set width and height of the plot area
+width <- reactive ({ input$plot_width })
+height <- reactive ({ input$plot_height })
 
 output$coolplot <- renderPlot(width = width, height = height, {     
-
   plot(plot_data())
 }) #close output$coolplot
 
-
-
+##### Set width and height of the heatmap area
 heatmap_width <- reactive ({ input$heatmap_width })
 heatmap_height <- reactive ({ input$heatmap_height })
 
-
 output$plot_heatmap <- renderPlot(width = heatmap_width, height = heatmap_height, {     
-  
   plot(plot_map())
 }) #close output$heatmap
 
