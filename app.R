@@ -11,6 +11,8 @@
 # Differentiate between factors and numbers for selecting display in case of tidy data
 # Print variables on the axis from the tidy column names
 
+options(shiny.maxRequestSize=30*1024^2)
+
 library(shiny)
 library(ggplot2)
 library(dplyr)
