@@ -18,6 +18,7 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(readr)
+library(magrittr)
 library(readxl)
 library(DT)
 
@@ -189,6 +190,9 @@ ui <- fluidPage(
                    checkboxInput(inputId = "tidyInput",
                                   label = "These data are Tidy (implemented!)",
                                   value = FALSE),
+                   conditionalPanel(
+                     condition = "input.tidyInput==false", selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
+                   
                     conditionalPanel(condition = "input.tidyInput==true",
                       h5("",
                          a("Click here for more info on tidy data",
@@ -224,7 +228,7 @@ ui <- fluidPage(
                  ),
                   conditionalPanel(
                     condition = "input.tabs=='Heatmap'",
-                    h4("Heatmap"),
+ #                   h4("Heatmap"),
                     
                     
   ####################### UI Panel for Heatmap ###############
@@ -292,7 +296,8 @@ ui <- fluidPage(
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ),
                   tabPanel("Heatmap", downloadButton("downloadHeatmapPDF", "Download pdf-file"), downloadButton("downloadHeatmapPNG", "Download png-file"),
-                           h4("UNDER DEVELOPMENT"), plotOutput("plot_heatmap")
+#                           h4("UNDER DEVELOPMENT"), 
+                           plotOutput("plot_heatmap")
                            ),
 ##### Uncomment for interactive graph panel
 #                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
@@ -419,6 +424,15 @@ df_upload <- reactive({
       }
 #  }
   
+  columns_to_remove <- names(data)
+  #Remove column Time
+  columns_to_remove <- columns_to_remove[-1]
+  #Remove last column (id)
+  columns_to_remove <- columns_to_remove[-length(columns_to_remove)]
+  
+  #Show the columns that can be removed
+  updateSelectInput(session, "data_remove", choices = columns_to_remove)
+  
     return(data)
 })
 
@@ -429,9 +443,25 @@ df_upload <- reactive({
 output$data_uploaded <- renderDataTable({
   
   #    observe({ print(input$tidyInput) })
-  df_upload()
+  df_filtered()
 })
 #############################################################
+
+
+
+
+
+
+##### REMOVE SELECTED COLUMNS #########
+df_filtered <- reactive({     
+  
+  if (!is.null(input$data_remove)) {
+    columns = input$data_remove
+    df <- df_upload() %>% select(-one_of(columns))
+  } else if (is.null(input$data_remove)) {
+    df <- df_upload()}
+  
+})
 
 
  #################################################
@@ -441,6 +471,7 @@ df_upload_tidy <- reactive({
   koos <- df_upload()
 
   if(input$tidyInput == FALSE ) {
+    koos <- df_filtered()
     klaas <- gather(koos, Sample, Value, -Time, -id)
 
     klaas <- klaas %>% mutate (Time = as.numeric(Time), Value = as.numeric(Value))
