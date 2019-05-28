@@ -72,17 +72,19 @@ ui <- fluidPage(
                    checkboxInput(inputId = "no_grid",
                                  label = "Remove gridlines",
                                  value = FALSE),
-
-                   checkboxInput(inputId = "adjust_scale",
-                                 label = "Adjust scale",
-                                 value = FALSE),
-                   conditionalPanel(
-                     condition = "input.adjust_scale == true",
+                   
+                   checkboxInput(inputId = "change_scale",
+                                 label = "Change scale",
+                                 value = FALSE),                   
+                   
+                   
+                  conditionalPanel(
+                     condition = "input.change_scale == true",
                      textInput("range_x", "Range x-axis (min,max)", value = "")
                      
                    ),
                    conditionalPanel(
-                     condition = "input.adjust_scale == true",
+                     condition = "input.change_scale == true",
                      textInput("range_y", "Range y-axis (min,max)", value = "")
                      
                    ),
@@ -224,7 +226,13 @@ ui <- fluidPage(
                         conditionalPanel(
                           condition = "input.norm_type=='fold' || input.norm_type=='perc' || input.norm_type=='diff' || input.norm_type=='z-score' ",     
                         textInput("base_range", "Define baseline by rownumbers (start,end)", value = "1,5"))
-                        )
+                        ),
+                   conditionalPanel(
+                     condition = "input.normalization==true", (downloadButton("downloadData", "Download normalized tidy data (csv)"))),
+                   
+                   hr(),
+                   
+                   NULL
                  ),
                   conditionalPanel(
                     condition = "input.tabs=='Heatmap'",
@@ -254,17 +262,17 @@ ui <- fluidPage(
                     numericInput("heatmap_height", "Height (# pixels): ", value = 480),
                     numericInput("heatmap_width", "Width (# pixels):", value = 600),
   
-                    checkboxInput(inputId = "adjust_scale2",
+                    checkboxInput(inputId = "change_scale2",
                                   label = "Adjust scale", value=FALSE),
                     conditionalPanel(
-                      condition = "input.adjust_scale2 == true",
+                      condition = "input.change_scale2 == true",
                       actionButton('range_lineplot','Copy range from lineplot'),
 
                       textInput("range_x2", "Range temporal axis (min,max)", value = "")
                       
                     ),
                     conditionalPanel(
-                      condition = "input.adjust_scale2 == true",
+                      condition = "input.change_scale2 == true",
                       textInput("range_y2", "Range of the signal (min,max)", value = "")
                       
                     ),
@@ -318,19 +326,19 @@ server <- function(input, output, session) {
   ####################################################################
 ##################### Synchronize scales between tabs ##################  
   
-observeEvent(input$adjust_scale, {  
-  if (input$adjust_scale==TRUE)  {
-    updateCheckboxInput(session, "adjust_scale2", value = TRUE)
-  } else if (input$adjust_scale==FALSE)   {
-    updateCheckboxInput(session, "adjust_scale2", value = FALSE)
+observeEvent(input$change_scale, {  
+  if (input$change_scale==TRUE)  {
+    updateCheckboxInput(session, "change_scale2", value = TRUE)
+  } else if (input$change_scale==FALSE)   {
+    updateCheckboxInput(session, "change_scale2", value = FALSE)
   }
 })
  
-observeEvent(input$adjust_scale2, {  
-  if (input$adjust_scale2==TRUE)  {
-    updateCheckboxInput(session, "adjust_scale", value = TRUE)
-  } else if (input$adjust_scale2==FALSE)   {
-    updateCheckboxInput(session, "adjust_scale", value = FALSE)
+observeEvent(input$change_scale2, {  
+  if (input$change_scale2==TRUE)  {
+    updateCheckboxInput(session, "change_scale", value = TRUE)
+  } else if (input$change_scale2==FALSE)   {
+    updateCheckboxInput(session, "change_scale", value = FALSE)
   }
 })
   
@@ -388,12 +396,32 @@ df_upload <- reactive({
           } else if (input$file_type == "Excel"){
           df_input_list <- lapply(input$upload$datapath, read_excel)
           }
-          
+       
           #Take the filenames input$cvcs$name and remove anything after "." to get rid of extension   
           names(df_input_list) <- gsub(input$upload$name, pattern="\\..*", replacement="")
-          #Merge all the dataframes and use the filenames (without extension) as id    
-          df_input <- bind_rows(df_input_list, .id = "id")
-          if(input$tidyInput == FALSE ) {
+          observe({ print(names(df_input_list)) })             
+          
+          # if(!"id" %in% colnames(df_input_list)) {
+          #       #Merge all the dataframes and use the filenames (without extension) as id    
+          #       df_input <- bind_rows(df_input_list, .id = "id")
+          # } else {
+          #         df_input <- df_input_list
+          #         }
+          
+
+          df_input <- bind_rows(df_input_list, .id = "ids")
+          
+          #If there is no id columns add it
+          if(!"id" %in% colnames(df_input)) {
+            df_input <- df_input %>% rename(id =ids)
+          }
+          #If the uploaded has an id column, use it
+          else if("id" %in% colnames(df_input)) {
+            df_input <- df_input %>% select(-one_of("ids"))            
+          }
+
+          
+          if(input$tidyInput == FALSE && !"Time" %in% colnames(df_input)) {
           #Force the first column from the csv file to be labeled as "Time"
           names(df_input)[2] <- "Time"
           }
@@ -800,14 +828,14 @@ plot_map <- reactive({
     # Setting the order of the x-axis
   p <- p + scale_y_discrete(limits=custom_order)
     
-  if (input$adjust_scale == TRUE) {
+  if (input$change_scale == TRUE) {
       rng_x <- as.numeric(strsplit(input$range_x2,",")[[1]])
       p <- p + xlim(rng_x[1],rng_x[2])  
       
       rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
       p <- p +  scale_fill_gradient(low="darkblue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
 
-  } else if (input$adjust_scale == FALSE) {p <- p+ scale_fill_gradient(low="darkblue", high="yellow")}
+  } else if (input$change_scale == FALSE) {p <- p+ scale_fill_gradient(low="darkblue", high="yellow")}
     
   ########### Do some formatting of the lay-out
   
@@ -928,14 +956,41 @@ plot_data <- reactive({
        }
     }
     
-    # # if the range of values is specified
-    if (input$adjust_scale == TRUE) {
+    
+    #Adjust scale if range for x (min,max) is specified
+    if (input$range_x != "" &&  input$change_scale == TRUE) {
       rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
-      p <- p + xlim(rng_x[1],rng_x[2])
-      
-      rng_y <- as.numeric(strsplit(input$range_y,",")[[1]])
-      p <- p + ylim(rng_y[1],rng_y[2])
+      observe({ print(rng_x) })
+      #If min>max invert the axis
+        if (rng_x[1]>rng_x[2]) {p <- p+ scale_x_reverse()}
+
+      #Autoscale if rangeis NOT specified
+    } else if (input$range_x == "" ||  input$change_scale == FALSE) {
+      rng_x <- c(NULL,NULL)
+ #     observe({ print(rng_x) })
     }
+
+
+    #Adjust scale if range for y (min,max) is specified
+    if (input$range_y != "" &&  input$change_scale == TRUE) {
+      rng_y <- as.numeric(strsplit(input$range_y,",")[[1]])
+
+      #If min>max invert the axis
+      if (rng_y[1]>rng_y[2]) {p <- p+ scale_y_reverse()}
+
+      #Autoscale if rangeis NOT specified
+    } else if (input$range_y == "" ||  input$change_scale == FALSE) {
+      rng_y <- c(NULL,NULL)
+    }
+
+
+#    observe({ print(rng_x) })
+#    observe({ print(rng_y) })    
+
+
+    # Define the axis limits    
+    p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(rng_y[1],rng_y[2]))    
+    
     
 
     # if title specified
@@ -1014,7 +1069,28 @@ output$plot_heatmap <- renderPlot(width = heatmap_width, height = heatmap_height
     df_summary_mean()
   })
 ################################################
-  
+
+#### Export the data in tidy format ###########
+
+output$downloadData <- downloadHandler(
+  filename = function() {
+    paste("PlotTwist_normalized", ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(df_normalized(), file, row.names = FALSE)
+  }
+)
+
+################################################
+
+# End R-session when browser closed
+session$onSessionEnded(stopApp)
+
+
+
+######## The End; close server ########################  
+
+
   } #close server
 
 shinyApp(ui = ui, server = server)
