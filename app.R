@@ -11,7 +11,7 @@
 # Differentiate between factors and numbers for selecting display in case of tidy data
 # Print variables on the axis from the tidy column names
 
-options(shiny.maxRequestSize=30*1024^2)
+#options(shiny.maxRequestSize=30*1024^2)
 
 library(shiny)
 library(ggplot2)
@@ -68,7 +68,17 @@ ui <- fluidPage(
                    
                    conditionalPanel(
                      condition = "input.indicate_stim == true",
-                     textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146")),
+                     
+                     radioButtons(inputId = "stim_shape",
+                                  label = NULL, choices = list("Bar on top" = "bar", "Box in plot" = "box", "Bar&Box"="both"), selected = "bar"),
+                     
+                     textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146"),
+                     
+                     textInput("stim_text", "Text (condition1, condition2,...)", value = ""),
+                     textInput("stim_colors", "Colors (condition1, condition2,...)", value = ""),                     
+                     
+                     
+                     NULL),
                    checkboxInput(inputId = "no_grid",
                                  label = "Remove gridlines",
                                  value = FALSE),
@@ -136,8 +146,10 @@ ui <- fluidPage(
                                  value = FALSE),
                    conditionalPanel(
                      condition = "input.adj_fnt_sz == true",
-                     numericInput("fnt_sz_ttl", "Size axis titles:", value = 24),
-                     numericInput("fnt_sz_ax", "Size axis labels:", value = 18)
+                     numericInput("fnt_sz_title", "Plot title:", value = 24),
+                     numericInput("fnt_sz_labs", "Axis titles:", value = 24),
+                     numericInput("fnt_sz_ax", "Axis labels:", value = 18),
+                     numericInput("fnt_sz_stim", "Condition labels:", value = 8)
                      
                    ),
                    conditionalPanel(
@@ -301,7 +313,12 @@ ui <- fluidPage(
       
       tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
-                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
+                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), 
+                           
+                           actionButton("settings_copy", icon = icon("clone"),
+                                        label = "Clone current setting"),
+                           
+                           plotOutput("coolplot")
                   ),
                   tabPanel("Heatmap", downloadButton("downloadHeatmapPDF", "Download pdf-file"), downloadButton("downloadHeatmapPNG", "Download png-file"),
 #                           h4("UNDER DEVELOPMENT"), 
@@ -420,9 +437,8 @@ df_upload <- reactive({
             df_input <- df_input %>% select(-one_of("ids"))            
           }
 
-          
+          #Force the first column from the csv file to be labeled as "Time" if this columns is absent          
           if(input$tidyInput == FALSE && !"Time" %in% colnames(df_input)) {
-          #Force the first column from the csv file to be labeled as "Time"
           names(df_input)[2] <- "Time"
           }
           data <- df_input
@@ -533,6 +549,190 @@ observe({
 })
 ################################### 
 
+########### GET INPUT VARIABLEs FROM HTML ##############
+
+observe({
+  
+  
+  ############ ?data ################
+  
+  query <- parseQueryString(session$clientData$url_search)
+  if (!is.null(query[['data']])) {
+    presets_data <- query[['data']]
+    presets_data <- unlist(strsplit(presets_data,";"))
+    observe(print((presets_data)))
+    
+    updateRadioButtons(session, "data_input", selected = presets_data[1])    
+    updateCheckboxInput(session, "tidyInput", value = presets_data[2])
+
+    updateCheckboxInput(session, "normalization", value = presets_data[3])
+
+    updateRadioButtons(session, "norm_type", selected = presets_data[4])    
+    updateTextInput(session, "base_range", value= presets_data[5])
+    
+  }
+  
+  ############ ?vis ################
+  
+  if (!is.null(query[['vis']])) {
+    
+    presets_vis <- query[['vis']]
+    presets_vis <- unlist(strsplit(presets_vis,";"))
+    observe(print((presets_vis)))
+    
+    updateRadioButtons(session, "data_form", selected = presets_vis[1])
+    updateSliderInput(session, "alphaInput", value = presets_vis[2])
+    updateRadioButtons(session, "summaryInput", selected = presets_vis[3])
+    updateCheckboxInput(session, "add_CI", value = presets_vis[4])
+    updateSliderInput(session, "alphaInput_summ", value = presets_vis[5])
+#    updateRadioButtons(session, "ordered", selected = presets_vis[6])
+    #  updateTabsetPanel(session, "tabs", selected = "Plot")
+  }
+  
+  ############ ?layout ################
+  
+  if (!is.null(query[['layout']])) {
+    
+    presets_layout <- query[['layout']]
+    presets_layout <- unlist(strsplit(presets_layout,";"))
+    observe(print((presets_layout)))
+    
+    updateCheckboxInput(session, "no_grid", value = (presets_layout[2]))
+    
+    updateCheckboxInput(session, "change_scale", value = presets_layout[3])
+
+    updateTextInput(session, "range_y", value= presets_layout[5])
+    updateCheckboxInput(session, "color_data", value = presets_layout[6])
+    updateCheckboxInput(session, "color_stats", value = presets_layout[7])
+    updateRadioButtons(session, "adjustcolors", selected = presets_layout[8])    
+#    updateCheckboxInput(session, "add_description", value = presets_layout[9])
+    if (length(presets_layout)>10) {
+      updateNumericInput(session, "plot_height", value= presets_layout[10])
+      updateNumericInput(session, "plot_width", value= presets_layout[11])
+    }
+    #  updateTabsetPanel(session, "tabs", selected = "Plot")
+  }
+  
+  ############ ?color ################
+  
+  if (!is.null(query[['color']])) {
+    
+    presets_color <- query[['color']]
+    presets_color <- unlist(strsplit(presets_color,";"))
+    
+    updateSelectInput(session, "colour_list", selected = presets_color[1])
+    updateTextInput(session, "user_color_list", value= presets_color[2])
+  }
+  
+  ############ ?label ################
+  
+  if (!is.null(query[['label']])) {
+    
+    presets_label <- query[['label']]
+    presets_label <- unlist(strsplit(presets_label,";"))
+    observe(print((presets_label)))
+    
+    
+    updateCheckboxInput(session, "add_title", value = presets_label[1])
+    updateTextInput(session, "title", value= presets_label[2])
+    
+    updateCheckboxInput(session, "label_axes", value = presets_label[3])
+    updateTextInput(session, "lab_x", value= presets_label[4])
+    updateTextInput(session, "lab_y", value= presets_label[5])
+    
+    updateCheckboxInput(session, "adj_fnt_sz", value = presets_label[6])
+    updateNumericInput(session, "fnt_sz_labs", value= presets_label[7])
+    updateNumericInput(session, "fnt_sz_ax", value= presets_label[8])
+#    updateCheckboxInput(session, "add_description", value = presets_label[9])
+  }
+  
+#   ############ ?url ################
+#   
+#   if (!is.null(query[['url']])) {
+#     updateRadioButtons(session, "data_input", selected = 5)  
+#     updateTextInput(session, "URL", value= query[['url']])
+#     observe(print((query[['url']])))
+#     updateTabsetPanel(session, "tabs", selected = "Plot")
+#   }
+
+  
+  
+  
+  
+   })
+ 
+
+########### RENDER URL ##############
+
+output$HTMLpreset <- renderText({
+  url()
+})
+
+######### GENERATE URL with the settings #########
+
+url <- reactive({
+  
+  base_URL <- paste(sep = "", session$clientData$url_protocol, "//",session$clientData$url_hostname, ":",session$clientData$url_port, session$clientData$url_pathname)
+  
+  data <- c(input$data_input, input$tidyInput, input$normalization, input$norm_type, input$base_range, "")
+  
+  vis <- c(input$data_form, input$alphaInput, input$summaryInput, input$add_CI, input$alphaInput_summ, "")
+  layout <- c(" ", input$no_grid, input$change_scale, " ", input$range_y, input$color_data, input$color_stats,
+              input$adjustcolors, "X", input$plot_height, input$plot_width)
+  
+  #Hide the standard list of colors if it is'nt used
+  if (input$adjustcolors != "5") {
+    color <- c(input$colour_list, "none")
+  } else if (input$adjustcolors == "5") {
+    color <- c(input$colour_list, input$user_color_list)
+  }
+  
+  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_labs, input$fnt_sz_ax, input$add_description)
+  
+  #replace FALSE by "" and convert to string with ; as seperator
+  data <- sub("FALSE", "", data)
+  data <- paste(data, collapse=";")
+  data <- paste0("data=", data) 
+  
+  vis <- sub("FALSE", "", vis)
+  vis <- paste(vis, collapse=";")
+  vis <- paste0("vis=", vis) 
+  
+  layout <- sub("FALSE", "", layout)
+  layout <- paste(layout, collapse=";")
+  layout <- paste0("layout=", layout) 
+  
+  color <- sub("FALSE", "", color)
+  color <- paste(color, collapse=";")
+  color <- paste0("color=", color) 
+  
+  label <- sub("FALSE", "", label)
+  label <- paste(label, collapse=";")
+  label <- paste0("label=", label) 
+  
+  if (input$data_input == "5") {url <- paste("url=",input$URL,sep="")} else {url <- NULL}
+  
+  parameters <- paste(data, vis,layout,color,label,url, sep="&")
+  
+  preset_URL <- paste(base_URL, parameters, sep="?")
+  
+  observe(print(parameters))
+  observe(print(preset_URL))  
+  return(preset_URL)
+})
+
+
+############# Pop-up that displays the URL to 'clone' the current settings ################
+
+observeEvent(input$settings_copy , {
+  showModal(urlModal(url=url(), title = "Use the URL to launch PlotsOfData with the current setting"))
+})
+
+# observeEvent(input$legend_copy , {
+#   showModal(urlModal(url=Fig_legend(), title = "Legend text"))
+# })
+
+
 
 ###########################################################  
 ######## Extract the data for display & summary stats #######  
@@ -591,7 +791,7 @@ df_binned <- reactive ({
     #use the column with bins to generate a summary, effectively combining the data
     df_binned <- df %>% group_by(unique_id, bin_id,id) %>% summarise(Value=mean(Value), Time=mean(Time)) %>% ungroup()
 
-# Remove the last bin is it is not completely filled (needed for correct visualization of the heatmap)
+# Remove the last bin if it is not completely filled (needed for correct visualization of the heatmap)
     number_of_x_values <- trunc(max_bin/bin_factor)
     df_binned <- df_binned %>% group_by(unique_id,id) %>% slice(1:number_of_x_values) %>% ungroup()
 
@@ -750,7 +950,7 @@ df_summary_mean <- reactive({
 
 
  ###########################################
-######### DEFINE DOWNLOAD BUTTONS ###########
+######### DEFINE DOWNLOAD BUTTONS FOR ORDINARY PLOT ###########
 
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
@@ -776,7 +976,7 @@ output$downloadPlotPNG <- downloadHandler(
   contentType = "application/png" # MIME type of the image
 )
 
-######### FOR HEATMAP ###########
+######### DEFINE DOWNLOAD BUTTONS FOR HEATMAP ###########
 
 output$downloadHeatmapPDF <- downloadHandler(
   filename <- function() {
@@ -802,7 +1002,7 @@ output$downloadHeatmapPNG <- downloadHandler(
   contentType = "application/png" # MIME type of the image
 )
 
- ###########################################  
+ ############# GENERATE PLOT LAYERS FOR HEATMAP #############  
 
 
 plot_map <- reactive({
@@ -841,6 +1041,10 @@ plot_map <- reactive({
   
   p <- p+ theme_minimal(base_size = 16)
   
+  
+  
+  
+  
   #remove legend (if selected)
   if (input$add_legend2 == FALSE) {  
     p <- p + theme(legend.position="none")
@@ -860,7 +1064,7 @@ plot_map <- reactive({
 })
 
  ###############################################
-############## GENERATE PLOT LAYERS #############      
+############## GENERATE PLOT LAYERS FOR ORDINARY PLOT #############      
         
 
 plot_data <- reactive({
@@ -882,6 +1086,13 @@ plot_data <- reactive({
       kleur_data <- NULL
     }
  
+    if (input$fnt_sz_stim == "") {
+      fnt_sz_stim <- 6
+    } else {
+      fnt_sz_stim <- input$fnt_sz_stim
+    }
+    
+    
     newColors <- NULL
     
     if (input$adjustcolors == 2) {
@@ -938,24 +1149,7 @@ plot_data <- reactive({
     
     p <- p+ theme_light(base_size = 16)
     
-    # if a stimulus is applied
-    if (input$indicate_stim == TRUE) {
-      rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
-
-      #If only one number is entered, a vertical line is added
-      if (length(rang) ==1) {
-        p <- p + geom_vline(xintercept=rang[1], black="orange", size=1)
-      }
-      
-      #Repeat annotating the grey box for every 'pair' of numbers
-      nsteps = floor(length(rang)/2)
-      for (i in 0:nsteps) {
-        
-        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=-Inf, ymax=Inf, alpha=0.1, fill="black")
-      
-       }
-    }
-    
+   
     
     #Adjust scale if range for x (min,max) is specified
     if (input$range_x != "" &&  input$change_scale == TRUE) {
@@ -977,25 +1171,115 @@ plot_data <- reactive({
 
       #If min>max invert the axis
       if (rng_y[1]>rng_y[2]) {p <- p+ scale_y_reverse()}
+      
+      upper_y <- rng_y[2]
+      lower_y <- rng_y[1]
+      
 
       #Autoscale if rangeis NOT specified
     } else if (input$range_y == "" ||  input$change_scale == FALSE) {
+
+      
+      #Read out the current range, this is necessary for annotation of stimulus
       rng_y <- c(NULL,NULL)
+      upper_y <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range[2]
+      lower_y <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range[1]
+      
+    }
+    range_y <- upper_y-lower_y
+
+    #Annotate Stimulus
+    
+    rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
+    
+    stimText <- c("","","","","")
+    
+    if (input$indicate_stim == TRUE && input$stim_text !="") {
+      stimText <- gsub("\\s","", strsplit(input$stim_text,",")[[1]])
     }
 
+    
+    if (input$indicate_stim == TRUE && input$stim_colors !="") {
+      stimColors <- gsub("\\s","", strsplit(input$stim_colors,",")[[1]])
+      
+    } else if (input$indicate_stim == TRUE && input$stim_colors =="") {
+      stimColors <- "black"
+    }
+      
+  
+    # if a stimulus is applied
+    if (input$indicate_stim == TRUE) {
+      
+      p <- p  +  theme(plot.margin = unit(c(3,1,1,1), "lines"))
+      p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(lower_y,upper_y),clip = 'off')
+      
+
+      
+      #If only one number is entered, a vertical line is added
+      if (length(rang) ==1) {
+        p <- p + geom_vline(xintercept=rang[1], black="orange", size=1)
+      }
+      
+
+      nsteps = floor(length(rang)/2)
+      #Repeat the colors if needed
+      if(length(stimColors) < nsteps) {
+        stimColors<-rep(stimColors,times=(round(nsteps/length(stimColors)))+1)
+      }
+      
+      
+      if(input$stim_shape == "bar") {
+          for (i in 0:nsteps) {
+             p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=upper_y+.02*range_y, ymax=upper_y+.05*range_y, alpha=0.8, fill=stimColors[i+1])
+             p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=upper_y+.1*range_y, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+          }
+      } else if (input$stim_shape == "box") {
+        
+          for (i in 0:nsteps) {
+              p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=-Inf, ymax=Inf, alpha=0.1, fill=stimColors[i+1])
+              p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=upper_y+.1*range_y, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+          }
+          
+      } else if (input$stim_shape == "both") {
+          for (i in 0:nsteps) {
+            p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=-Inf, ymax=Inf, alpha=0.1, fill=stimColors[i+1])
+            p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=upper_y+.02*range_y, ymax=upper_y+.05*range_y, alpha=0.8, fill=stimColors[i+1])
+            p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=upper_y+.1*range_y, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+          }
+        
+      }
+    }
+    
+    
+    
+
+    
+
+    
+    
+
+
+    observe({ print(paste("lower:",lower_y, "upper:",upper_y, "range:",range_y)) })
+    # observe({ print(paste("upper:",upper_y)) })
+    # observe({ print(paste("range:",range_y)) })
+    
 
 #    observe({ print(rng_x) })
-#    observe({ print(rng_y) })    
+    observe({ print(rng_y) })    
 
 
     # Define the axis limits    
-    p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(rng_y[1],rng_y[2]))    
-    
+#    p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(rng_y[1],rng_y[2]),clip = 'off')    
     
 
     # if title specified
-    if (input$add_title)
-      p <- p + ggtitle(input$title)
+    if (input$add_title == TRUE) {
+      #Add line break to generate some space
+      title <- paste(input$title, "\n",sep="")
+      p <- p + labs(title = title)
+    }
+
+
 
     # # if labels specified
     if (input$label_axes)
@@ -1004,8 +1288,9 @@ plot_data <- reactive({
     # # if font size is adjusted
     if (input$adj_fnt_sz) {
       p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
-      p <- p + theme(axis.title = element_text(size=input$fnt_sz_ttl))
-    }
+      p <- p + theme(axis.title = element_text(size=input$fnt_sz_labs))
+      p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
+      }
     
     #remove legend (if selected)
     if (input$add_legend == FALSE) {  
@@ -1034,7 +1319,16 @@ plot_data <- reactive({
                     
     }
 
+    
+    #Remove upper and right axis
+
+        p <- p + theme(panel.border = element_blank())
+        p <- p + theme(axis.line.x  = element_line(colour = "black"), axis.line.y  = element_line(colour = "black"))
+
     return(p)
+    
+    
+    
     
   }) #close output$coolplot
 
@@ -1070,11 +1364,14 @@ output$plot_heatmap <- renderPlot(width = heatmap_width, height = heatmap_height
   })
 ################################################
 
+
+
 #### Export the data in tidy format ###########
 
 output$downloadData <- downloadHandler(
+  
   filename = function() {
-    paste("PlotTwist_normalized", ".csv", sep = "")
+    paste("PlotTwist_tidy_normalized", ".csv", sep = "")
   },
   content = function(file) {
     write.csv(df_normalized(), file, row.names = FALSE)
@@ -1084,7 +1381,7 @@ output$downloadData <- downloadHandler(
 ################################################
 
 # End R-session when browser closed
-session$onSessionEnded(stopApp)
+# session$onSessionEnded(stopApp)
 
 
 
