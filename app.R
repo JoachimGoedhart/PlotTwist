@@ -489,9 +489,14 @@ df_upload <- reactive({
   
   columns_to_remove <- names(data)
   #Remove column Time
-  columns_to_remove <- columns_to_remove[-1]
+  columns_to_remove <- columns_to_remove[columns_to_remove != "Time"]
   #Remove last column (id)
-  columns_to_remove <- columns_to_remove[-length(columns_to_remove)]
+  columns_to_remove <- columns_to_remove[columns_to_remove != "id"]
+
+  
+#  columns_to_remove <- columns_to_remove[-1]
+  
+#  columns_to_remove <- columns_to_remove[-length(columns_to_remove)]
   
   #Show the columns that can be removed
   updateSelectInput(session, "data_remove", choices = columns_to_remove)
