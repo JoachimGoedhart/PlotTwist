@@ -1061,8 +1061,6 @@ plot_data <- reactive({
       multiplier <- 1
     }
 
-    
-    #### plot stats ####
         
     if (input$data_form == "dataasline") {
       p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
@@ -1070,6 +1068,8 @@ plot_data <- reactive({
       p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
     } 
 
+    #### plot stats ####
+    
     if (input$summaryInput == TRUE  && input$add_CI == FALSE) {
       p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
     } else if (input$summaryInput == TRUE  && input$add_CI == TRUE) {
@@ -1079,6 +1079,9 @@ plot_data <- reactive({
       p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
     }
     
+    
+    # This needs to go here (before annotations)
+    p <- p+ theme_light(base_size = 16)
     
     ############## Adjust scale if necessary ##########
 
@@ -1186,7 +1189,7 @@ plot_data <- reactive({
     
 ########## Do some formatting of the lay-out ##########
     
-    p <- p+ theme_light(base_size = 16)
+
 
     # if title specified
     if (input$add_title == TRUE) {
@@ -1291,6 +1294,8 @@ plot_map <- reactive({
     
   } 
   
+  # This needs to go here (before annotations)
+  p <- p+ theme_light(base_size = 16)
   
   #################### Add labels for perturbations #####################
   
@@ -1345,8 +1350,6 @@ plot_map <- reactive({
 }
   
   ########## Do some formatting of the lay-out ##########
-  
-  p <- p+ theme_minimal(base_size = 16)
   
   #remove legend (if selected)
   if (input$add_legend == FALSE) {  
