@@ -1,4 +1,4 @@
-##############################################################################
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # PlotTwist: Shiny app for plotting and comparing time-dependent data
 # Created by Joachim Goedhart (@joachimgoedhart), first version 2018
 # Takes non-tidy, spreadsheet type data as input assuming first column is "Time"
@@ -6,7 +6,23 @@
 # Raw data is displayed with user-defined visibility (alpha)
 # The mean is displayed with user-defined visibility (alpha)
 # Inferential statistics (95%CI) can be displayed as ribbon
-##############################################################################
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# Copyright (C) 2019  Joachim Goedhart
+# electronic mail address: j #dot# goedhart #at# uva #dot# nl
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # ToDo
 # Differentiate between factors and numbers for selecting display in case of tidy data
 # Print variables on the axis from the tidy column names
@@ -38,9 +54,11 @@ Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677',
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
 
 
-#Read a text file (comma separated values)
+#Read a text file with demo data (comma separated values)
 df_wide_example <- read.csv("Data_wide_example_time_single.csv", na.strings = "")
 df_tidy_example <- read.csv("Data_tidy_example_time_multi.csv")
+
+###### UI: User interface #########
 
 ui <- fluidPage(
   titlePanel("PlotTwist - Plotting Data from Time series"),
@@ -372,7 +390,6 @@ NULL
 
 server <- function(input, output, session) {
 
-  ####################################################################
 ##################### Synchronize scales between tabs ##################  
   
 observeEvent(input$change_scale, {  
@@ -399,29 +416,7 @@ observeEvent(input$range_lineplot, {
 })
 
 
-# observeEvent(input$range_x, {  
-#   updateTextInput(session, "range_x2", value = input$range_x)
-# })
-# observeEvent(input$range_y, {  
-#   updateTextInput(session, "range_y2", value = input$range_y)
-# })
-
-# observeEvent(input$range_x2, {  
-#   updateTextInput(session, "range_x", value = input$range_x2)
-# })
-# observeEvent(input$range_y2, {  
-#   updateTextInput(session, "range_y", value = input$range_y2)
-# })
-
-####################################################################
-
-
-    
-    
-  
-  #####################################
-  ###### READ IN / GET DATA ###########
-  #####################################
+###### DATA INPUT ###################
   
 df_upload <- reactive({
     if (input$data_input == 1) {
@@ -450,14 +445,6 @@ df_upload <- reactive({
           names(df_input_list) <- gsub(input$upload$name, pattern="\\..*", replacement="")
           observe({ print(names(df_input_list)) })             
           
-          # if(!"id" %in% colnames(df_input_list)) {
-          #       #Merge all the dataframes and use the filenames (without extension) as id    
-          #       df_input <- bind_rows(df_input_list, .id = "id")
-          # } else {
-          #         df_input <- df_input_list
-          #         }
-          
-
           df_input <- bind_rows(df_input_list, .id = "ids")
           
           #If there is no id columns add it
@@ -512,23 +499,15 @@ df_upload <- reactive({
     return(data)
 })
 
-
-#############################################################
-#### DISPLAY UPLOADED DATA (exactly as provided ##################
+################## DISPLAY UPLOADED DATA (exactly as provided ##################
 
 output$data_uploaded <- renderDataTable({
   
   #    observe({ print(input$tidyInput) })
   df_filtered()
 })
-#############################################################
 
-
-
-
-
-
-##### REMOVE SELECTED COLUMNS #########
+################ REMOVE SELECTED COLUMNS #########
 df_filtered <- reactive({     
   
   if (!is.null(input$data_remove)) {
@@ -540,8 +519,13 @@ df_filtered <- reactive({
 })
 
 
- #################################################
-############## Convert data if needed ############
+##### CONVERT TO TIDY DATA ##########
+
+#Need to tidy the data?!
+#Untidy data will be converted to long format with two columns named 'Condition' and 'Value'
+#The input for "Condition" will be taken from the header, i.e. first row
+#Tidy data will be used as supplied
+
 df_upload_tidy <- reactive({
   
   koos <- df_upload()
@@ -564,10 +548,8 @@ df_upload_tidy <- reactive({
   }
   return(klaas)
 })
- #################################################
 
-####################################
-##### Get the Variables ##############
+##### Get Variables from the input ##############
 
 observe({ 
   var_names  <- names(df_upload_tidy())
@@ -579,7 +561,6 @@ observe({
   updateSelectInput(session, "g_var", choices = var_list, selected="Sample")
 
 })
-################################### 
 
 ########### GET INPUT VARIABLEs FROM HTML ##############
 
@@ -765,8 +746,6 @@ observeEvent(input$settings_copy , {
 # })
 
 
-
-###########################################################  
 ######## Extract the data for display & summary stats #######  
 
 df_selected <- reactive({
@@ -801,12 +780,8 @@ df_selected <- reactive({
   observe({ print(head(koos)) })
   return(koos)
 })
-###########################################################  
 
-
-#################################
 ######## Binning x-axis #########
-
 
 df_binned <- reactive ({
 
@@ -832,13 +807,8 @@ df_binned <- reactive ({
   return(df_binned)
 })
 
-#################################
 
-
-
-############################
-######## NORMALIZE #########
-
+######## Several options ofr normalization of the data #########
 
 df_normalized <- reactive ({
   
@@ -920,11 +890,9 @@ df_normalized <- reactive ({
 
   
 })
-############################
 
+######## Determine and set the order of Conditions #######  
 
- ###########################################################  
-######## Determine and set the order of the Conditions #######  
 ordered_list <- reactive({
   
   #  klaas <- df_upload_tidy()
@@ -955,13 +923,7 @@ ordered_list <- reactive({
   
 })
 
-########################################################### 
 
-
-
-
-
-##################################################
 #### Caluclate Summary of the DATA for the MEAN ####
 
 df_summary_mean <- reactive({
@@ -977,11 +939,6 @@ df_summary_mean <- reactive({
   return(koos)
 })
 
-#################################################
-
-
-
- ###########################################
 ######### DEFINE DOWNLOAD BUTTONS FOR ORDINARY PLOT ###########
 
 output$downloadPlotPDF <- downloadHandler(
@@ -1034,11 +991,8 @@ output$downloadHeatmapPNG <- downloadHandler(
   contentType = "application/png" # MIME type of the image
 )
 
-
- ###############################################
 ############## GENERATE PLOT LAYERS FOR ORDINARY PLOT #############      
         
-
 plot_data <- reactive({
 
     #Define how colors are used
@@ -1094,14 +1048,17 @@ plot_data <- reactive({
     p <- ggplot(data=klaas, aes_string(x="Time")) 
     
          
-      #### plot individual measurements ####
+    #### plot individual measurements ####
     
     if (input$thicken =="TRUE") {
       multiplier <- 4
     } else if (input$thicken =="FALSE"){
       multiplier <- 1
     }
+
     
+    #### plot stats ####
+        
     if (input$data_form == "dataasline") {
       p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
     } else if (input$data_form == "dataasdot") {
@@ -1117,11 +1074,9 @@ plot_data <- reactive({
       p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
     }
     
-    ########### Do some formatting of the lay-out
     
-    p <- p+ theme_light(base_size = 16)
-    
-   
+    ############## Adjust scale if necessary ##########
+
     
     #Adjust scale if range for x (min,max) is specified
     if (input$range_x != "" &&  input$change_scale == TRUE) {
@@ -1160,7 +1115,7 @@ plot_data <- reactive({
     }
     range_y <- upper_y-lower_y
 
-    #Annotate Stimulus
+    #################### Add labels for perturbations #####################
     
     rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
     
@@ -1222,13 +1177,11 @@ plot_data <- reactive({
       }
     }
     
-    
-    # observe({ print(paste("upper:",upper_y)) })
-    # observe({ print(paste("range:",range_y)) })
-    
 
-#    observe({ print(rng_x) })
-
+    
+########## Do some formatting of the lay-out ##########
+    
+    p <- p+ theme_light(base_size = 16)
 
     # if title specified
     if (input$add_title == TRUE) {
@@ -1236,8 +1189,6 @@ plot_data <- reactive({
       title <- paste(input$title, "\n",sep="")
       p <- p + labs(title = title)
     }
-
-
 
     # # if labels specified
     if (input$label_axes)
@@ -1277,7 +1228,6 @@ plot_data <- reactive({
                     
     }
 
-    
     #Remove upper and right axis
 
         p <- p + theme(panel.border = element_blank())
@@ -1285,12 +1235,9 @@ plot_data <- reactive({
 
     return(p)
     
-    
-    
-    
   }) #close output$coolplot
 
-##### Uncomment for interactive graph panel
+# Uncomment for interactive graph panel
 # output$plot_interact <- renderPlotly({
 #   ggplotly(plot_data(), height=as.numeric(input$plot_height), width=as.numeric(input$plot_width))
 # })
@@ -1298,14 +1245,11 @@ plot_data <- reactive({
 
 ############# GENERATE PLOT LAYERS FOR HEATMAP #############  
 
-
 plot_map <- reactive({
   
   ####### Read the order from the ordered list #############  
   custom_order <- ordered_list()
   #  observe({ print(custom_order) })  
-  ########################################
-  #### #Need to connect order to plotting via scale_discrete
   
   klaas <- df_binned()
   koos <- df_summary_mean()
@@ -1317,25 +1261,19 @@ plot_map <- reactive({
   klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
   koos <- koos %>% mutate(id = as.factor(id))
   
-  ######### Default font size
+  # Set default font size
   if (input$fnt_sz_stim == "") {
     fnt_sz_stim <- 6
   } else {
     fnt_sz_stim <- input$fnt_sz_stim
   }
   
-  
-  
-  
   #### Command to prepare the plot ####
   p <- ggplot(data=klaas, aes_string(x="Time"))
   
   #geom_raster is faster than geom_tile
   p <- p + geom_raster(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))+ scale_fill_viridis_c()
-  #  p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))  
-  #  + scale_fill_viridis_c()
-  #  + scale_fill_viridis(name = "",limits = c(0.5,1.1))
-  
+
   # Setting the order of the x-axis
   p <- p + scale_y_discrete(limits=custom_order)
   
@@ -1344,22 +1282,12 @@ plot_map <- reactive({
     p <- p + xlim(rng_x[1],rng_x[2])  
     
     rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
-#    p <- p +  scale_fill_gradient(low="darkblue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
     p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]))
     
   } 
   
-  #else if (input$change_scale == FALSE) {p <- p+ scale_fill_gradient(low="darkblue", high="yellow")}
   
-  ########### Do some formatting of the lay-out
-  
-  p <- p+ theme_minimal(base_size = 16)
-  
-  # Annotation
-  
-  
-  
-  #Annotate Stimulus
+  #################### Add labels for perturbations #####################
   
   rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
   
@@ -1369,7 +1297,6 @@ plot_map <- reactive({
     stimText <- gsub("\\s","", strsplit(input$stim_text,",")[[1]])
   }
   
-  
   if (input$indicate_stim == TRUE && input$stim_colors !="") {
     stimColors <- gsub("\\s","", strsplit(input$stim_colors,",")[[1]])
     
@@ -1378,23 +1305,17 @@ plot_map <- reactive({
   }
   nsteps = floor(length(rang)/2)
   
-  observe({print(nsteps)})
-  
-  
-  
+#  observe({print(nsteps)})
   
   if (input$indicate_stim ==TRUE) {
 
     p <- p  +  theme(plot.margin = unit(c(3,1,1,1), "lines"))
     p <- p + coord_cartesian(clip = 'off')
   
-    
-    
     #Repeat the colors if needed
     if(length(stimColors) < nsteps) {
       stimColors<-rep(stimColors,times=(round(nsteps/length(stimColors)))+1)
     }  
-    
     
     if(input$stim_shape == "bar") {
       for (i in 0:nsteps) {
@@ -1416,17 +1337,11 @@ plot_map <- reactive({
       }
       
     }
-    
-    
-    
-    
-    
-    
-    
-    
 }
   
+  ########## Do some formatting of the lay-out ##########
   
+  p <- p+ theme_minimal(base_size = 16)
   
   #remove legend (if selected)
   if (input$add_legend == FALSE) {  
@@ -1445,16 +1360,12 @@ plot_map <- reactive({
   if (input$show_labels_y == FALSE)
   p <- p + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
   
-  
-  
   # if title specified
   if (input$add_title == TRUE) {
     #Add line break to generate some space
     title <- paste(input$title, "\n",sep="")
     p <- p + labs(title = title)
   }
-  
-  
   
   # # if labels specified
   if (input$label_axes)
@@ -1467,15 +1378,13 @@ plot_map <- reactive({
     p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
   }
   
-  
-  p
-  
+  return(p)
   
 })
 
 
 
-##### Set width and height of the plot area
+############# Set width and height of the plot area ###############
 width <- reactive ({ input$plot_width })
 height <- reactive ({ input$plot_height })
 
@@ -1483,7 +1392,7 @@ output$coolplot <- renderPlot(width = width, height = height, {
   plot(plot_data())
 }) #close output$coolplot
 
-##### Set width and height of the heatmap area
+############# Set width and height of the heatmap area ################
 heatmap_width <- reactive ({ input$heatmap_width })
 heatmap_height <- reactive ({ input$heatmap_height })
 
@@ -1491,20 +1400,17 @@ output$plot_heatmap <- renderPlot(width = heatmap_width, height = heatmap_height
   plot(plot_map())
 }) #close output$heatmap
 
-    
- ################################################
-#### Render the data summary as a table ###########
+
+############## Render the data summary as a table ###########
   
   output$data_summary <- renderTable({
     
     df_out <- message <- data.frame(Note = "Showing selected data in tidy format")
     df_summary_mean()
   })
-################################################
 
 
-
-#### Export the data in tidy format ###########
+############## Export the data in tidy format ###########
 
 output$downloadData <- downloadHandler(
   
@@ -1516,15 +1422,10 @@ output$downloadData <- downloadHandler(
   }
 )
 
-################################################
-
-# End R-session when browser closed
-# session$onSessionEnded(stopApp)
-
-
 
 ######## The End; close server ########################  
-
+    # End R-session when browser closed
+    session$onSessionEnded(stopApp)
 
   } #close server
 
