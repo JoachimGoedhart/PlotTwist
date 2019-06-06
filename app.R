@@ -47,7 +47,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(width=3,
                  conditionalPanel(
-                   condition = "input.tabs=='Plot' || input.tabs=='Plot-interactive'",
+                   condition = "input.tabs=='Plot'",
                    h4("Data"),
                    radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot"), selected = "dataasline"),
                    checkboxInput("thicken", "The plot thickens", value = FALSE),
@@ -60,26 +60,11 @@ ui <- fluidPage(
                    checkboxInput("summaryInput", "Show the mean", value=FALSE),
                    #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
                    checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
+                   
 
                    h4("Plot Layout"),
-                   checkboxInput(inputId = "indicate_stim",
-                                 label = "Indicate Baseline/Stimulus",
-                                 value = FALSE),
-                   
-                   conditionalPanel(
-                     condition = "input.indicate_stim == true",
-                     
-                     radioButtons(inputId = "stim_shape",
-                                  label = NULL, choices = list("Bar on top" = "bar", "Box in plot" = "box", "Bar&Box"="both"), selected = "bar"),
-                     
-                     textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146"),
-                     
-                     textInput("stim_text", "Text (condition1, condition2,...)", value = ""),
-                     textInput("stim_colors", "Colors (condition1, condition2,...)", value = ""),                     
-                     
-                     
-                     NULL),
-                   checkboxInput(inputId = "no_grid",
+ 
+                  checkboxInput(inputId = "no_grid",
                                  label = "Remove gridlines",
                                  value = FALSE),
                    
@@ -120,44 +105,9 @@ ui <- fluidPage(
  
                    numericInput("plot_height", "Height (# pixels): ", value = 480),
                    numericInput("plot_width", "Width (# pixels):", value = 600),
+                  NULL),
+                 
  
-                   h4("Labels"),
-                   
-                   checkboxInput(inputId = "add_title",
-                                 label = "Add title",
-                                 value = FALSE),
-                   conditionalPanel(
-                     condition = "input.add_title == true",
-                     textInput("title", "Title:", value = "")
-                   ),
-                  
-                   checkboxInput(inputId = "label_axes",
-                                 label = "Change labels",
-                                 value = FALSE),
-                   conditionalPanel(
-                     condition = "input.label_axes == true",
-                     textInput("lab_x", "X-axis:", value = ""),
-                     textInput("lab_y", "Y-axis:", value = "")
-                     
-                   ),
-                   
-                   checkboxInput(inputId = "adj_fnt_sz",
-                                 label = "Change font size",
-                                 value = FALSE),
-                   conditionalPanel(
-                     condition = "input.adj_fnt_sz == true",
-                     numericInput("fnt_sz_title", "Plot title:", value = 24),
-                     numericInput("fnt_sz_labs", "Axis titles:", value = 24),
-                     numericInput("fnt_sz_ax", "Axis labels:", value = 18),
-                     numericInput("fnt_sz_stim", "Condition labels:", value = 8)
-                     
-                   ),
-                   conditionalPanel(
-                     condition = "input.color_data == true || input.color_stats == true",
-                     checkboxInput(inputId = "add_legend",
-                                   label = "Add legend",
-                                   value = FALSE))
-            ),
 
                  
                  conditionalPanel(
@@ -246,19 +196,27 @@ ui <- fluidPage(
                    
                    NULL
                  ),
-                  conditionalPanel(
-                    condition = "input.tabs=='Heatmap'",
- #                   h4("Heatmap"),
-                    
+                     
                     
   ####################### UI Panel for Heatmap ###############
-                    
+                conditionalPanel(
+                  condition = "input.tabs=='Heatmap'",
+                  #                   h4("Heatmap"),
+                  
                     
                     
                     h4("Plot Layout"),
-                    checkboxInput(inputId = "add_legend2",
-                                  label = "Add Legend",
-                                  value = TRUE),
+
+                  radioButtons(inputId = "ordered",
+                               label= "Order of the lines:",
+                               choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int"),
+                               selected = "none"),
+                  
+                  numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
+                  
+                     checkboxInput(inputId = "show_labels_y",
+                                   label = "Show y-axis labels",
+                                   value = FALSE),
                     # checkboxInput(inputId = "indicate_stim2",
                     #               label = "Indicate Baseline/Stimulus",
                     #               value = FALSE),
@@ -274,6 +232,8 @@ ui <- fluidPage(
                     numericInput("heatmap_height", "Height (# pixels): ", value = 480),
                     numericInput("heatmap_width", "Width (# pixels):", value = 600),
   
+                  
+                  
                     checkboxInput(inputId = "change_scale2",
                                   label = "Adjust scale", value=FALSE),
                     conditionalPanel(
@@ -288,17 +248,80 @@ ui <- fluidPage(
                       textInput("range_y2", "Range of the signal (min,max)", value = "")
                       
                     ),
-                    numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
-                    radioButtons(inputId = "ordered",
-                                 label= "Order of the lines:",
-                                 choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int"),
-                                 selected = "none"),
 
-                    NULL  ####### End of heatmap UI#######
+
+                  NULL  ####### End of heatmap UI#######
   
               ),
                     
-
+              conditionalPanel(condition = "input.tabs=='Plot' || input.tabs=='Heatmap'",
+                   
+                   h4("Labels"),
+                   
+                   
+                   
+                   ########
+                   checkboxInput(inputId = "indicate_stim",
+                                 label = "Indicate Baseline/Stimulus",
+                                 value = FALSE),
+                   
+                   conditionalPanel(
+                     condition = "input.indicate_stim == true",
+                     
+                     radioButtons(inputId = "stim_shape",
+                                  label = NULL, choices = list("Bar on top" = "bar", "Box in plot" = "box", "Bar&Box"="both"), selected = "bar"),
+                     
+                     textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146"),
+                     
+                     textInput("stim_text", "Text (condition1, condition2,...)", value = ""),
+                     textInput("stim_colors", "Colors (condition1, condition2,...)", value = ""),                     
+                     
+                     
+                     NULL),
+                   
+                   
+                   ###############
+                   
+                   
+                   
+                   
+                   
+                   
+                   checkboxInput(inputId = "add_title",
+                                 label = "Add title",
+                                 value = FALSE),
+                   conditionalPanel(
+                     condition = "input.add_title == true",
+                     textInput("title", "Title:", value = "")
+                   ),
+                   
+                   checkboxInput(inputId = "label_axes",
+                                 label = "Change labels",
+                                 value = FALSE),
+                   conditionalPanel(
+                     condition = "input.label_axes == true",
+                     textInput("lab_x", "X-axis:", value = ""),
+                     textInput("lab_y", "Y-axis:", value = "")
+                     
+                   ),
+                   
+                   checkboxInput(inputId = "adj_fnt_sz",
+                                 label = "Change font size",
+                                 value = FALSE),
+                   conditionalPanel(
+                     condition = "input.adj_fnt_sz == true",
+                     numericInput("fnt_sz_title", "Plot title:", value = 24),
+                     numericInput("fnt_sz_labs", "Axis titles:", value = 24),
+                     numericInput("fnt_sz_ax", "Axis labels:", value = 18),
+                     numericInput("fnt_sz_stim", "Condition labels:", value = 8)
+                     
+                   ),
+                   conditionalPanel(
+                     condition = "input.color_data == true || input.color_stats == true || input.tabs=='Heatmap'",
+                     checkboxInput(inputId = "add_legend",
+                                   label = "Add legend",
+                                   value = FALSE))
+  ),
                  conditionalPanel(
                    condition = "input.tabs=='About'",
                    h4("About")    
@@ -318,11 +341,20 @@ ui <- fluidPage(
                            actionButton("settings_copy", icon = icon("clone"),
                                         label = "Clone current setting"),
                            
-                           plotOutput("coolplot")
+                           
+                           div(`data-spy`="affix", `data-offset-top`="10", plotOutput("coolplot", height="100%")),
+ #                              htmlOutput("LegendText", width="200px", inline =FALSE),
+
+ #                          plotOutput("coolplot"),
+                             NULL
+                           
+                           
+
                   ),
                   tabPanel("Heatmap", downloadButton("downloadHeatmapPDF", "Download pdf-file"), downloadButton("downloadHeatmapPNG", "Download png-file"),
 #                           h4("UNDER DEVELOPMENT"), 
-                           plotOutput("plot_heatmap")
+div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_heatmap", height="100%")),
+NULL
                            ),
 ##### Uncomment for interactive graph panel
 #                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
@@ -1002,66 +1034,6 @@ output$downloadHeatmapPNG <- downloadHandler(
   contentType = "application/png" # MIME type of the image
 )
 
- ############# GENERATE PLOT LAYERS FOR HEATMAP #############  
-
-
-plot_map <- reactive({
-
-  ####### Read the order from the ordered list #############  
-  custom_order <- ordered_list()
-#  observe({ print(custom_order) })  
-  ########################################
-  #### #Need to connect order to plotting via scale_discrete
-  
-  klaas <- df_binned()
-  koos <- df_summary_mean()
-  klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
-  koos <- koos %>% mutate(id = as.factor(id))
-  
-  #### Command to prepare the plot ####
-  p <- ggplot(data=klaas, aes_string(x="Time"))
-  
-  p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))  
-#  + scale_fill_viridis_c()
-#  + scale_fill_viridis(name = "",limits = c(0.5,1.1))
-
-    # Setting the order of the x-axis
-  p <- p + scale_y_discrete(limits=custom_order)
-    
-  if (input$change_scale == TRUE) {
-      rng_x <- as.numeric(strsplit(input$range_x2,",")[[1]])
-      p <- p + xlim(rng_x[1],rng_x[2])  
-      
-      rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
-      p <- p +  scale_fill_gradient(low="darkblue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
-
-  } else if (input$change_scale == FALSE) {p <- p+ scale_fill_gradient(low="darkblue", high="yellow")}
-    
-  ########### Do some formatting of the lay-out
-  
-  p <- p+ theme_minimal(base_size = 16)
-  
-  
-  
-  
-  
-  #remove legend (if selected)
-  if (input$add_legend2 == FALSE) {  
-    p <- p + theme(legend.position="none")
-  }
-  
-  #remove gridlines
-    p <- p+ theme(panel.border = element_blank(),
-                  panel.grid.major = element_blank(),
-                  panel.grid.minor = element_blank(),
-                  axis.ticks = element_line(colour = "grey20"), 
- #                 axis.line = element_line(size = 0.1, linetype = "solid", colour = "black"),
-                  NULL)
-
-  p
-  
-  
-})
 
  ###############################################
 ############## GENERATE PLOT LAYERS FOR ORDINARY PLOT #############      
@@ -1251,26 +1223,12 @@ plot_data <- reactive({
     }
     
     
-    
-
-    
-
-    
-    
-
-
-    observe({ print(paste("lower:",lower_y, "upper:",upper_y, "range:",range_y)) })
     # observe({ print(paste("upper:",upper_y)) })
     # observe({ print(paste("range:",range_y)) })
     
 
 #    observe({ print(rng_x) })
-    observe({ print(rng_y) })    
 
-
-    # Define the axis limits    
-#    p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(rng_y[1],rng_y[2]),clip = 'off')    
-    
 
     # if title specified
     if (input$add_title == TRUE) {
@@ -1336,6 +1294,186 @@ plot_data <- reactive({
 # output$plot_interact <- renderPlotly({
 #   ggplotly(plot_data(), height=as.numeric(input$plot_height), width=as.numeric(input$plot_width))
 # })
+
+
+############# GENERATE PLOT LAYERS FOR HEATMAP #############  
+
+
+plot_map <- reactive({
+  
+  ####### Read the order from the ordered list #############  
+  custom_order <- ordered_list()
+  #  observe({ print(custom_order) })  
+  ########################################
+  #### #Need to connect order to plotting via scale_discrete
+  
+  klaas <- df_binned()
+  koos <- df_summary_mean()
+  
+  #Get the maximum number of traces
+  max_n <- max(koos$n)
+  #observe({print(n)})
+  
+  klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
+  koos <- koos %>% mutate(id = as.factor(id))
+  
+  ######### Default font size
+  if (input$fnt_sz_stim == "") {
+    fnt_sz_stim <- 6
+  } else {
+    fnt_sz_stim <- input$fnt_sz_stim
+  }
+  
+  
+  
+  
+  #### Command to prepare the plot ####
+  p <- ggplot(data=klaas, aes_string(x="Time"))
+  
+  #geom_raster is faster than geom_tile
+  p <- p + geom_raster(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))+ scale_fill_viridis_c()
+  #  p <- p + geom_tile(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))  
+  #  + scale_fill_viridis_c()
+  #  + scale_fill_viridis(name = "",limits = c(0.5,1.1))
+  
+  # Setting the order of the x-axis
+  p <- p + scale_y_discrete(limits=custom_order)
+  
+  if (input$change_scale == TRUE) {
+    rng_x <- as.numeric(strsplit(input$range_x2,",")[[1]])
+    p <- p + xlim(rng_x[1],rng_x[2])  
+    
+    rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
+#    p <- p +  scale_fill_gradient(low="darkblue", high="yellow", limits=c(rng_y[1],rng_y[2]))  
+    p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]))
+    
+  } 
+  
+  #else if (input$change_scale == FALSE) {p <- p+ scale_fill_gradient(low="darkblue", high="yellow")}
+  
+  ########### Do some formatting of the lay-out
+  
+  p <- p+ theme_minimal(base_size = 16)
+  
+  # Annotation
+  
+  
+  
+  #Annotate Stimulus
+  
+  rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
+  
+  stimText <- c("","","","","")
+  
+  if (input$indicate_stim == TRUE && input$stim_text !="") {
+    stimText <- gsub("\\s","", strsplit(input$stim_text,",")[[1]])
+  }
+  
+  
+  if (input$indicate_stim == TRUE && input$stim_colors !="") {
+    stimColors <- gsub("\\s","", strsplit(input$stim_colors,",")[[1]])
+    
+  } else if (input$indicate_stim == TRUE && input$stim_colors =="") {
+    stimColors <- "black"
+  }
+  nsteps = floor(length(rang)/2)
+  
+  observe({print(nsteps)})
+  
+  
+  
+  
+  if (input$indicate_stim ==TRUE) {
+
+    p <- p  +  theme(plot.margin = unit(c(3,1,1,1), "lines"))
+    p <- p + coord_cartesian(clip = 'off')
+  
+    
+    
+    #Repeat the colors if needed
+    if(length(stimColors) < nsteps) {
+      stimColors<-rep(stimColors,times=(round(nsteps/length(stimColors)))+1)
+    }  
+    
+    
+    if(input$stim_shape == "bar") {
+      for (i in 0:nsteps) {
+        p <- p + annotate("rect", xmin=rang[(i*2)+1]-0.5, xmax=rang[(i*2)+2]+0.5, ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+      }
+    } else if (input$stim_shape == "box") {
+      
+      for (i in 0:nsteps) {
+        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=0.5, ymax=max_n+0.5, fill=NA, color=stimColors[i+1],size=1)
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+1.2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+      }
+      
+    } else if (input$stim_shape == "both") {
+      for (i in 0:nsteps) {
+        p <- p + annotate("rect", xmin=rang[(i*2)+1]-0.5, xmax=rang[(i*2)+2]+0.5, ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
+        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=0.5, ymax=max_n+0.5, fill=NA, color=stimColors[i+1],size=1)
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+      }
+      
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+}
+  
+  
+  
+  #remove legend (if selected)
+  if (input$add_legend == FALSE) {  
+    p <- p + theme(legend.position="none")
+  }
+  
+  #remove gridlines
+  p <- p+ theme(panel.border = element_blank(),
+                panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank(),
+                axis.ticks = element_line(colour = "grey20"), 
+                #                 axis.line = element_line(size = 0.1, linetype = "solid", colour = "black"),
+                NULL)
+  
+  #remove labels and ticks on y-axis
+  if (input$show_labels_y == FALSE)
+  p <- p + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  
+  
+  
+  # if title specified
+  if (input$add_title == TRUE) {
+    #Add line break to generate some space
+    title <- paste(input$title, "\n",sep="")
+    p <- p + labs(title = title)
+  }
+  
+  
+  
+  # # if labels specified
+  if (input$label_axes)
+    p <- p + labs(x = input$lab_x, y = input$lab_y)
+  
+  # # if font size is adjusted
+  if (input$adj_fnt_sz) {
+    p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
+    p <- p + theme(axis.title = element_text(size=input$fnt_sz_labs))
+    p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
+  }
+  
+  
+  p
+  
+  
+})
+
+
 
 ##### Set width and height of the plot area
 width <- reactive ({ input$plot_width })
