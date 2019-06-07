@@ -26,6 +26,9 @@
 # ToDo
 # Differentiate between factors and numbers for selecting display in case of tidy data
 # Print variables on the axis from the tidy column names
+# Optimize facetting of heatmap
+# Improve annotation of small multiples (especially text)
+# Implement clustering methods
 
 #options(shiny.maxRequestSize=30*1024^2)
 
@@ -227,7 +230,7 @@ ui <- fluidPage(
 
                   radioButtons(inputId = "ordered",
                                label= "Order of the lines:",
-                               choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int"),
+                               choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int", "From hierarchical clustering" = "hc"),
                                selected = "none"),
                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
@@ -809,6 +812,8 @@ df_binned <- reactive ({
 
   } else {df_binned <- df_normalized()}
   
+  observe({print(head(df_binned))})
+  
   return(df_binned)
 })
 
@@ -900,8 +905,7 @@ df_normalized <- reactive ({
 
 ordered_list <- reactive({
   
-  #  klaas <- df_upload_tidy()
-  klaas <-  df_normalized()
+  klaas <-  df_binned()
   
   if(input$ordered == "max_int") {
     reordered_list <- reorder(klaas$unique_id, klaas$Value, max, na.rm = TRUE)
@@ -916,13 +920,28 @@ ordered_list <- reactive({
 
     #Determine a ranking based on amplitude = max-min
     df_rank <- klaas %>% group_by(unique_id) %>% summarise(amplitude=max(Value)-min(Value)) %>% mutate(rank=percent_rank(amplitude))
-
     reordered_list <- reorder(df_rank$unique_id, df_rank$rank)
+    
+  } else if (input$ordered == "hc") {
+    #Convert to wide format
+    df_wide <- klaas %>% select(unique_id, Value,Time)  %>% spread(key=unique_id, value=Value)
+    #Remove Time info
+    df_wide <- df_wide %>% select(-Time)
+    #hierarchical clustering
+    hc <- hclust(dist(t(df_wide)))
+    #Column order from clustering
+    col.order <- hc$order
+    #Reorder the dataframe dat according to the column order determined by clustering
+    df_clustered <- df_wide[, col.order]
+    
+    #Get the ordered column names from the clustered dataframe
+    reordered_list <- colnames(df_clustered)
+    observe({ print(reordered_list) })
   }
   
 
   ordered_list <- levels(reordered_list)
-#  observe({ print(ordered_list) })
+  observe({ print(ordered_list) })
   
   return(ordered_list)
   
@@ -1262,6 +1281,8 @@ plot_map <- reactive({
   klaas <- df_binned()
   koos <- df_summary_mean()
   
+  number_of_conditions <- nlevels(as.factor(klaas$id))
+  
   #Get the maximum number of traces
   max_n <- max(koos$n)
   #observe({print(n)})
@@ -1385,6 +1406,15 @@ plot_map <- reactive({
     p <- p + theme(axis.title = element_text(size=input$fnt_sz_labs))
     p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
   }
+  
+  
+  # Facetting for heatmap - requires optimization
+  # if (input$multiples == TRUE && number_of_conditions > 1) {
+  #     p <- p+ facet_grid(id~.)
+  # }
+    
+
+  
   
   return(p)
   
