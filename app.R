@@ -1202,6 +1202,8 @@ plot_data <- reactive({
           }
         
       }
+    } else {
+      p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(lower_y,upper_y))
     }
     
 
