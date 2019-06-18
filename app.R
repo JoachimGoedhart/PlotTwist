@@ -40,6 +40,7 @@ library(readr)
 library(magrittr)
 library(readxl)
 library(DT)
+library(dtw)
 
 ##### Uncomment for interactive graph panel
 #library(plotly)
@@ -70,66 +71,82 @@ ui <- fluidPage(
                  conditionalPanel(
                    condition = "input.tabs=='Plot'",
                    h4("Data"),
-                   radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot"), selected = "dataasline"),
-                   checkboxInput("thicken", "The plot thickens", value = FALSE),
-                   checkboxInput("multiples", "Small multiples", value = FALSE),
+                   radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot", "Heatmap" = "dataaspixel"), selected = "dataasline"),
+                   conditionalPanel(condition = "input.data_form != 'dataaspixel'",
+                                    
+                                    
+                            checkboxInput("thicken", "The plot thickens", value = FALSE),
+                            checkboxInput("multiples", "Small multiples", value = FALSE),
                    
-                   sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
-                   h4("Statistics"),
-                   sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),              
-
-                   checkboxInput("summaryInput", "Show the mean", value=FALSE),
-                   #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
-                   checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
-                   
+                             sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
+                             h4("Statistics"),
+                             sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),              
+          
+                             checkboxInput("summaryInput", "Show the mean", value=FALSE),
+                             #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
+                             checkboxInput(inputId = "add_CI", label = HTML("Show the 95% CI"), value = FALSE),
+                             NULL
+                   ),
 
                    h4("Plot Layout"),
  
-                  checkboxInput(inputId = "no_grid",
-                                 label = "Remove gridlines",
-                                 value = FALSE),
                    
                    checkboxInput(inputId = "change_scale",
                                  label = "Change scale",
-                                 value = FALSE),                   
-                   
-                   
-                  conditionalPanel(
+                                 value = FALSE),
+                   conditionalPanel(
                      condition = "input.change_scale == true",
                      textInput("range_x", "Range x-axis (min,max)", value = "")
                      
                    ),
                    conditionalPanel(
-                     condition = "input.change_scale == true",
+                     condition = "input.change_scale == true && input.data_form !='dataaspixel'",
                      textInput("range_y", "Range y-axis (min,max)", value = "")
                      
                    ),
+                   conditionalPanel(
+                     condition = "input.change_scale == true && input.data_form =='dataaspixel'",
+                     textInput("range_y2", "Range of the signal (min,max)", value = "")
+                   ),
                    
-                   checkboxInput("color_data", "Use color for the data", value=FALSE),
-                   checkboxInput("color_stats", "Use color for the stats", value=FALSE),
-                   #                  selectInput("colour_list", "Colour:", choices = ""),
-                   conditionalPanel(condition = "input.color_data == true || input.color_stats == true",
-                                    radioButtons("adjustcolors", "Color palette:", choices = 
-                                                   list("Standard" = 1,
-                                                        "Colorblind safe (bright)" = 2,
-                                                        "Colorblind safe (muted)" = 3,
-                                                        "Colorblind safe (light)" = 4,
-                                                        "User defined"=5),
-                                                 selected =  1),
-                                    conditionalPanel(condition = "input.adjustcolors == 5",
-                                                     textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen")), 
-                                    
-                                    h5("",
-                                       a("Click here for more info on color names",
-                                         href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
-                    ),
- 
-                   numericInput("plot_height", "Height (# pixels): ", value = 480),
-                   numericInput("plot_width", "Width (# pixels):", value = 600),
-                  NULL),
-                 
- 
+                  conditionalPanel(condition = "input.data_form != 'dataaspixel'",
 
+                            checkboxInput(inputId = "no_grid",
+                                          label = "Remove gridlines",
+                                          value = FALSE),
+                            checkboxInput("color_data", "Use color for the data", value=FALSE),
+                            checkboxInput("color_stats", "Use color for the stats", value=FALSE),
+                            #                  selectInput("colour_list", "Colour:", choices = ""),
+                            conditionalPanel(condition = "input.color_data == true || input.color_stats == true",
+                                             radioButtons("adjustcolors", "Color palette:", choices = 
+                                                            list("Standard" = 1,
+                                                                 "Colorblind safe (bright)" = 2,
+                                                                 "Colorblind safe (muted)" = 3,
+                                                                 "Colorblind safe (light)" = 4,
+                                                                 "User defined"=5),
+                                                          selected =  1),
+                                             conditionalPanel(condition = "input.adjustcolors == 5",
+                                                              textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen")), 
+                                             
+                                             h5("",
+                                                a("Click here for more info on color names",
+                                                  href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
+                            ),
+                            
+                            NULL
+                  ),
+                  
+                  conditionalPanel(condition = "input.data_form == 'dataaspixel'", 
+                            radioButtons(inputId = "ordered",
+                                         label= "Order of the lines:",
+                                         choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int", "From hierarchical clustering" = "hc"),
+                                         selected = "none")
+                  ),
+                            
+ 
+                  numericInput("plot_height", "Height (# pixels): ", value = 480),
+                  numericInput("plot_width", "Width (# pixels):", value = 600),
+                  NULL),
                  
                  conditionalPanel(
                    condition = "input.tabs=='Data upload'",
@@ -219,19 +236,25 @@ ui <- fluidPage(
                  ),
                      
                     
-  ####################### UI Panel for Heatmap ###############
+  ####################### UI Panel for Clustering ###############
                 conditionalPanel(
-                  condition = "input.tabs=='Heatmap'",
-                  #                   h4("Heatmap"),
-                  
-                    
-                    
-                    h4("Plot Layout"),
+                  condition = "input.tabs=='Clustering'",
 
-                  radioButtons(inputId = "ordered",
-                               label= "Order of the lines:",
-                               choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int", "From hierarchical clustering" = "hc"),
-                               selected = "none"),
+                  
+                  h4("Clustering"),
+                  
+                  radioButtons(inputId = "method",
+                               label= "Distance measure:",
+                               choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan"),
+                               selected = "euclidean"),
+
+                  radioButtons(inputId = "linkage",
+                               label= "Linkage method:",
+                               choices = list("Complete" = "complete", "Centroid" ="centroid", "Ward.D2"="ward.D2"),
+                               selected = "complete"),
+                  
+                  
+                  numericInput ("groups", "Number of clusters/groups:", value=2, min = 1, max = 100, step = 1),
                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
                   
@@ -250,33 +273,34 @@ ui <- fluidPage(
                     #               value = FALSE),
                     # 
   
-                    numericInput("heatmap_height", "Height (# pixels): ", value = 480),
-                    numericInput("heatmap_width", "Width (# pixels):", value = 600),
+                    numericInput("clusterplot_height", "Height (# pixels): ", value = 480),
+                    numericInput("clusterplot_width", "Width (# pixels):", value = 600),
   
                   
-                  
-                    checkboxInput(inputId = "change_scale2",
-                                  label = "Adjust scale", value=FALSE),
-                    conditionalPanel(
-                      condition = "input.change_scale2 == true",
-                      actionButton('range_lineplot','Copy range from lineplot'),
+                    # 
+                    # checkboxInput(inputId = "change_scale2",
+                    #               label = "Adjust scale", value=FALSE),
+                    # conditionalPanel(
+                    #   condition = "input.change_scale2 == true",
+                    #   actionButton('range_lineplot','Copy range from lineplot'),
+                    # 
+                    #   textInput("range_x2", "Range temporal axis (min,max)", value = "")
+                    #   
+                    # ),
+                    # conditionalPanel(
+                    #   condition = "input.change_scale2 == true",
+                    #   textInput("range_y2", "Range of the signal (min,max)", value = "")
+                    #   
+                    # ),
 
-                      textInput("range_x2", "Range temporal axis (min,max)", value = "")
-                      
-                    ),
-                    conditionalPanel(
-                      condition = "input.change_scale2 == true",
-                      textInput("range_y2", "Range of the signal (min,max)", value = "")
-                      
-                    ),
 
-
-                  NULL  ####### End of heatmap UI#######
+                  NULL  ####### End of Cluster UI #######
   
               ),
                     
-              conditionalPanel(condition = "input.tabs=='Plot' || input.tabs=='Heatmap'",
-                   
+#              conditionalPanel(condition = "input.tabs=='Plot' || input.tabs=='Clustering'",
+              conditionalPanel(condition = "input.tabs=='Plot'",
+                                                
                    h4("Labels"),
                    
                    
@@ -338,7 +362,7 @@ ui <- fluidPage(
                      
                    ),
                    conditionalPanel(
-                     condition = "input.color_data == true || input.color_stats == true || input.tabs=='Heatmap'",
+                     condition = "input.color_data == true || input.color_stats == true || input.data_form=='dataaspixel'",
                      checkboxInput(inputId = "add_legend",
                                    label = "Add legend",
                                    value = FALSE))
@@ -372,9 +396,9 @@ ui <- fluidPage(
                            
 
                   ),
-                  tabPanel("Heatmap", downloadButton("downloadHeatmapPDF", "Download pdf-file"), downloadButton("downloadHeatmapPNG", "Download png-file"),
+                  tabPanel("Clustering", downloadButton("downloadClusteringPDF", "Download pdf-file"), downloadButton("downloadClusteringPNG", "Download png-file"),
 #                           h4("UNDER DEVELOPMENT"), 
-div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_heatmap", height="100%")),
+div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_clust", height="100%")),
 NULL
                            ),
 ##### Uncomment for interactive graph panel
@@ -412,11 +436,11 @@ observeEvent(input$change_scale2, {
 })
   
 
-observeEvent(input$range_lineplot, {
-  updateTextInput(session, "range_x2", value = input$range_x)
-  updateTextInput(session, "range_y2", value = input$range_y)
-  
-})
+# observeEvent(input$range_lineplot, {
+#   updateTextInput(session, "range_x2", value = input$range_x)
+#   updateTextInput(session, "range_y2", value = input$range_y)
+#   
+# })
 
 
 ###### DATA INPUT ###################
@@ -948,6 +972,36 @@ ordered_list <- reactive({
 })
 
 
+################ Clustering ###########
+
+df_grouped <- reactive({
+  
+  klaas <-  df_binned() %>% drop_na()
+  #Convert to wide format
+  df_wide <- klaas %>% select(unique_id, Value,Time)  %>% spread(key=unique_id, value=Value)
+  #Remove Time info
+  df_wide_minus_t <- df_wide %>% select(-Time)
+  
+  #Calculate the distance matrix
+  dst <- dist(t(df_wide_minus_t), method = input$method)
+  
+  #Perform cluster analysis on the data
+  hc <- hclust(dst, method = input$linkage)
+  
+  
+  #Define groups from a cut-off k
+  group <- cutree(hc, k = input$groups)
+  df_group <- as.data.frame(group)
+
+  df_group$unique_id <- rownames(df_group)
+  
+  #Add group number
+  klaas <- klaas %>% left_join(df_group, by="unique_id")
+  
+  return(klaas)
+  
+})
+
 #### Caluclate Summary of the DATA for the MEAN ####
 
 df_summary_mean <- reactive({
@@ -991,24 +1045,24 @@ output$downloadPlotPNG <- downloadHandler(
 
 ######### DEFINE DOWNLOAD BUTTONS FOR HEATMAP ###########
 
-output$downloadHeatmapPDF <- downloadHandler(
+output$downloadClusteringPDF <- downloadHandler(
   filename <- function() {
     paste("PlotTwist_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
-    pdf(file, width = input$heatmap_width/72, height = input$heatmap_height/72)
+    pdf(file, width = input$clusterplot_width/72, height = input$clusterplot_height/72)
     plot(plot_map())
     dev.off()
   },
   contentType = "application/pdf" # MIME type of the image
 )
 
-output$downloadHeatmapPNG <- downloadHandler(
+output$downloadClusteringPNG <- downloadHandler(
   filename <- function() {
     paste("PlotTwist", Sys.time(), ".png", sep = "")
   },
   content <- function(file) {
-    png(file, width = input$heatmap_width*4, height = input$heatmap_height*4, res=300)
+    png(file, width = input$clusterplot_width*4, height = input$clusterplot_height*4, res=300)
     plot(plot_map())
     dev.off()
   },
@@ -1272,6 +1326,73 @@ plot_data <- reactive({
 # })
 
 
+
+############## GENERATE PLOTs of CLUSTERS #############      
+
+plot_clusters <- reactive({
+  
+  klaas <- df_grouped()
+  
+  
+  #### Command to prepare the plot ####
+  p <- ggplot(data=klaas, aes_string(x="Time")) 
+  
+  
+  #### plot individual measurements ####
+  p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id"))
+
+    
+  # This needs to go here (before annotations)
+  p <- p+ theme_light(base_size = 16)
+  
+  ############## Adjust scale if necessary ##########
+  
+  # if title specified
+  if (input$add_title == TRUE) {
+    #Add line break to generate some space
+    title <- paste(input$title, "\n",sep="")
+    p <- p + labs(title = title)
+  }
+  
+  # # if labels specified
+  if (input$label_axes)
+    p <- p + labs(x = input$lab_x, y = input$lab_y)
+  
+  # # if font size is adjusted
+  if (input$adj_fnt_sz) {
+    p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
+    p <- p + theme(axis.title = element_text(size=input$fnt_sz_labs))
+    p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
+  }
+  
+  #remove legend (if selected)
+  if (input$add_legend == FALSE) {  
+    p <- p + theme(legend.position="none")
+  }
+  
+  #remove gridlines (if selected)
+  if (input$no_grid == TRUE) {  
+    p <- p+ theme(panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank())
+  }
+  
+  p <- p+ facet_wrap(~group)
+
+  #Remove upper and right axis
+  
+  p <- p + theme(panel.border = element_blank())
+  p <- p + theme(axis.line.x  = element_line(colour = "black"), axis.line.y  = element_line(colour = "black"))
+  
+  return(p)
+  
+}) #close plot_clusters
+
+
+
+
+
+
+
 ############# GENERATE PLOT LAYERS FOR HEATMAP #############  
 
 plot_map <- reactive({
@@ -1309,7 +1430,7 @@ plot_map <- reactive({
   p <- p + scale_y_discrete(limits=custom_order)
   
   if (input$change_scale == TRUE) {
-    rng_x <- as.numeric(strsplit(input$range_x2,",")[[1]])
+    rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
     p <- p + xlim(rng_x[1],rng_x[2])  
     
     rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
@@ -1410,6 +1531,9 @@ plot_map <- reactive({
   }
   
   
+  
+  
+  
   # Facetting for heatmap - requires optimization
   # if (input$multiples == TRUE && number_of_conditions > 1) {
   #     p <- p+ facet_grid(id~.)
@@ -1424,20 +1548,27 @@ plot_map <- reactive({
 
 
 
+
+
+
+
 ############# Set width and height of the plot area ###############
 width <- reactive ({ input$plot_width })
 height <- reactive ({ input$plot_height })
 
-output$coolplot <- renderPlot(width = width, height = height, {     
-  plot(plot_data())
+output$coolplot <- renderPlot(width = width, height = height, {
+  
+  if (input$data_form != "dataaspixel") plot(plot_data())
+  else plot(plot_map())
+  
 }) #close output$coolplot
 
 ############# Set width and height of the heatmap area ################
-heatmap_width <- reactive ({ input$heatmap_width })
-heatmap_height <- reactive ({ input$heatmap_height })
+clusterplot_width <- reactive ({ input$clusterplot_width })
+clusterplot_height <- reactive ({ input$clusterplot_height })
 
-output$plot_heatmap <- renderPlot(width = heatmap_width, height = heatmap_height, {     
-  plot(plot_map())
+output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_height, {     
+  plot(plot_clusters())
 }) #close output$heatmap
 
 
@@ -1465,7 +1596,7 @@ output$downloadData <- downloadHandler(
 
 ######## The End; close server ########################  
     # End R-session when browser closed
-    session$onSessionEnded(stopApp)
+    # session$onSessionEnded(stopApp)
 
   } #close server
 
