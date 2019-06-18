@@ -41,6 +41,7 @@ library(magrittr)
 library(readxl)
 library(DT)
 library(dtw)
+library(gridExtra)
 
 ##### Uncomment for interactive graph panel
 #library(plotly)
@@ -1569,7 +1570,76 @@ clusterplot_height <- reactive ({ input$clusterplot_height })
 
 output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_height, {     
   plot(plot_clusters())
+  
+  
+  plotlist <- list(plot_clusters(), plot_contribs())
+  to_keep <- !sapply(plotlist,is.null)
+  plotlist <- plotlist[to_keep]
+
+    grid.arrange(grobs=plotlist, nrow=length(plotlist), ncol=1)
+
+  
+  
 }) #close output$heatmap
+
+
+
+plot_contribs <- reactive({
+  
+  klaas <- df_grouped()
+  
+  klaas <- klaas %>% select(group, id, unique_id) %>% distinct()
+
+  klaas <- klaas %>% mutate(group = factor(group))
+  
+  observe({print(klaas)})  
+  
+    ########## STATS ##########
+  
+  #### Command to prepare the plot ####
+  p <- ggplot(data=klaas, aes_string(x="id")) 
+  
+  
+  #### plot individual measurements ####
+  p <- p+ geom_bar(aes(fill=group), position = "fill")
+  
+  
+  # This needs to go here (before annotations)
+  p <- p+ theme_light(base_size = 16)
+  
+  ############## Adjust scale if necessary ##########
+  
+  # if title specified
+  if (input$add_title == TRUE) {
+    #Add line break to generate some space
+    title <- paste(input$title, "\n",sep="")
+    p <- p + labs(title = title)
+  }
+  
+  # # if labels specified
+  if (input$label_axes)
+    p <- p + labs(x = input$lab_x, y = input$lab_y)
+  
+  # # if font size is adjusted
+  if (input$adj_fnt_sz) {
+    p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
+    p <- p + theme(axis.title = element_text(size=input$fnt_sz_labs))
+    p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
+  }
+  
+
+  
+  
+#  p <- p+ facet_wrap(~id)
+  
+  #Remove upper and right axis
+  
+
+  return(p)
+  
+}) #close plot_contribs
+
+
 
 
 ############## Render the data summary as a table ###########
