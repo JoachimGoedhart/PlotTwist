@@ -254,14 +254,17 @@ ui <- fluidPage(
                                choices = list("Complete" = "complete", "Centroid" ="centroid", "Ward.D2"="ward.D2"),
                                selected = "complete"),
                   
+                  checkboxInput(inputId = "show_proportions",
+                                label = "Show contributions per condition",
+                                value = FALSE),
                   
                   numericInput ("groups", "Number of clusters/groups:", value=2, min = 1, max = 100, step = 1),
                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
                   
-                     checkboxInput(inputId = "show_labels_y",
-                                   label = "Show y-axis labels",
-                                   value = FALSE),
+                  
+                  
+
                     # checkboxInput(inputId = "indicate_stim2",
                     #               label = "Indicate Baseline/Stimulus",
                     #               value = FALSE),
@@ -274,7 +277,7 @@ ui <- fluidPage(
                     #               value = FALSE),
                     # 
   
-                    numericInput("clusterplot_height", "Height (# pixels): ", value = 480),
+                    numericInput("clusterplot_height", "Height (# pixels): ", value = 350),
                     numericInput("clusterplot_width", "Width (# pixels):", value = 600),
   
                   
@@ -1566,7 +1569,10 @@ output$coolplot <- renderPlot(width = width, height = height, {
 
 ############# Set width and height of the heatmap area ################
 clusterplot_width <- reactive ({ input$clusterplot_width })
-clusterplot_height <- reactive ({ input$clusterplot_height })
+clusterplot_height <- reactive ({ 
+  
+  if (input$show_proportions) input$clusterplot_height*2
+  else input$clusterplot_height})
 
 output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_height, {     
   plot(plot_clusters())
@@ -1586,7 +1592,13 @@ output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_
 
 plot_contribs <- reactive({
   
+  
+  if (input$show_proportions ==FALSE) return(NULL)
+  
+  
   klaas <- df_grouped()
+  
+  
   
   klaas <- klaas %>% select(group, id, unique_id) %>% distinct()
 
