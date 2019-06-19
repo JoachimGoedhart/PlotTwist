@@ -993,9 +993,9 @@ df_grouped <- reactive({
   hc <- hclust(dst, method = input$linkage)
   
   
-  #Define groups from a cut-off k
-  group <- cutree(hc, k = input$groups)
-  df_group <- as.data.frame(group)
+  #Define clusters from a cut-off k
+  Cluster <- cutree(hc, k = input$groups)
+  df_group <- as.data.frame(Cluster)
 
   df_group$unique_id <- rownames(df_group)
   
@@ -1047,31 +1047,54 @@ output$downloadPlotPNG <- downloadHandler(
   contentType = "application/png" # MIME type of the image
 )
 
-######### DEFINE DOWNLOAD BUTTONS FOR HEATMAP ###########
+######### DEFINE DOWNLOAD BUTTONS FOR CLUSTER RESULTS ###########
 
 output$downloadClusteringPDF <- downloadHandler(
   filename <- function() {
-    paste("PlotTwist_", Sys.time(), ".pdf", sep = "")
+    paste("PlotTwist_Clusters_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
-    pdf(file, width = input$clusterplot_width/72, height = input$clusterplot_height/72)
-    plot(plot_map())
+    
+    plotlist <- list(plot_clusters(), plot_contribs())
+    to_keep <- !sapply(plotlist,is.null)
+    plotlist <- plotlist[to_keep] 
+    
+    if (input$show_proportions) k=2
+    else k=1
+
+    pdf(file, width = input$clusterplot_width/72, height = input$clusterplot_height/72*k)
+      
+    grid.arrange(grobs=plotlist, nrow=length(plotlist), ncol=1)
+
     dev.off()
   },
   contentType = "application/pdf" # MIME type of the image
 )
 
+
 output$downloadClusteringPNG <- downloadHandler(
   filename <- function() {
-    paste("PlotTwist", Sys.time(), ".png", sep = "")
+    paste("PlotTwist_Clusters_", Sys.time(), ".png", sep = "")
   },
   content <- function(file) {
-    png(file, width = input$clusterplot_width*4, height = input$clusterplot_height*4, res=300)
-    plot(plot_map())
+    
+    plotlist <- list(plot_clusters(), plot_contribs())
+    to_keep <- !sapply(plotlist,is.null)
+    plotlist <- plotlist[to_keep] 
+    
+    if (input$show_proportions) k=2
+    else k=1
+
+    png(file, width = input$clusterplot_width*4, height = input$clusterplot_height*4*k, res=300)
+
+    grid.arrange(grobs=plotlist, nrow=length(plotlist), ncol=1)
+    
     dev.off()
   },
   contentType = "application/png" # MIME type of the image
 )
+
+
 
 ############## GENERATE PLOT LAYERS FOR ORDINARY PLOT #############      
         
@@ -1337,15 +1360,14 @@ plot_clusters <- reactive({
   
   klaas <- df_grouped()
   
-  
   #### Command to prepare the plot ####
-  p <- ggplot(data=klaas, aes_string(x="Time")) 
-  
+  p <- ggplot(data=klaas, aes_string(x="Time", y="Value")) 
   
   #### plot individual measurements ####
-  p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id"))
+  p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id"), alpha=input$alphaInput)
+  
+  p <- p + stat_summary(fun.y=mean, aes(group=1), geom="line", colour="black", size=2)
 
-    
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
   
@@ -1380,21 +1402,16 @@ plot_clusters <- reactive({
                   panel.grid.minor = element_blank())
   }
   
-  p <- p+ facet_wrap(~group)
-
+  p <- p+ facet_wrap(~Cluster, labeller = label_both)
+  
   #Remove upper and right axis
   
   p <- p + theme(panel.border = element_blank())
   p <- p + theme(axis.line.x  = element_line(colour = "black"), axis.line.y  = element_line(colour = "black"))
-  
+  # p <- p + theme(aspect.ratio=1)
   return(p)
   
 }) #close plot_clusters
-
-
-
-
-
 
 
 ############# GENERATE PLOT LAYERS FOR HEATMAP #############  
@@ -1567,12 +1584,19 @@ output$coolplot <- renderPlot(width = width, height = height, {
   
 }) #close output$coolplot
 
-############# Set width and height of the heatmap area ################
+############# Set width and height of the cluster plot area ################
 clusterplot_width <- reactive ({ input$clusterplot_width })
 clusterplot_height <- reactive ({ 
   
+  # klaas <- df_grouped()
+  # number_of_clusters <- nlevels(as.factor(klaas$Cluster))
+  # columns <- ceiling((number_of_clusters/3))
+  
   if (input$show_proportions) input$clusterplot_height*2
-  else input$clusterplot_height})
+  else input$clusterplot_height
+  
+  })
+  
 
 output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_height, {     
   plot(plot_clusters())
@@ -1588,49 +1612,45 @@ output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_
   
 }) #close output$heatmap
 
-
+########### GENERATE THE PLOT with PROPORTIONS #########
 
 plot_contribs <- reactive({
+  newColors <- NULL
+  
+  if (input$adjustcolors == 2) {
+    newColors <- Tol_bright
+  } else if (input$adjustcolors == 3) {
+    newColors <- Tol_muted
+  } else if (input$adjustcolors == 4) {
+    newColors <- Tol_light
+  } else if (input$adjustcolors == 5) {
+    newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
+  }
   
   
   if (input$show_proportions ==FALSE) return(NULL)
   
-  
   klaas <- df_grouped()
   
-  
-  
-  klaas <- klaas %>% select(group, id, unique_id) %>% distinct()
+  klaas <- klaas %>% select(Cluster, id, unique_id) %>% distinct()
 
-  klaas <- klaas %>% mutate(group = factor(group))
+  klaas <- klaas %>% mutate(Cluster = factor(Cluster))
   
   observe({print(klaas)})  
   
-    ########## STATS ##########
   
   #### Command to prepare the plot ####
   p <- ggplot(data=klaas, aes_string(x="id")) 
   
-  
   #### plot individual measurements ####
-  p <- p+ geom_bar(aes(fill=group), position = "fill")
+  p <- p+ geom_bar(aes(fill=Cluster), position = "fill")
   
   
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
-  
-  ############## Adjust scale if necessary ##########
-  
-  # if title specified
-  if (input$add_title == TRUE) {
-    #Add line break to generate some space
-    title <- paste(input$title, "\n",sep="")
-    p <- p + labs(title = title)
-  }
-  
-  # # if labels specified
-  if (input$label_axes)
-    p <- p + labs(x = input$lab_x, y = input$lab_y)
+
+  # Add labels  
+  p <- p + labs(x = "Condition", y = "Proportion")
   
   # # if font size is adjusted
   if (input$adj_fnt_sz) {
@@ -1638,15 +1658,23 @@ plot_contribs <- reactive({
     p <- p + theme(axis.title = element_text(size=input$fnt_sz_labs))
     p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
   }
-  
 
+  if (input$adjustcolors >1) {
+    p <- p+ scale_color_manual(values=newColors)
+    p <- p+ scale_fill_manual(values=newColors)
+  }
   
+  #remove gridlines (if selected)
+  if (input$no_grid == TRUE) {  
+    p <- p+ theme(panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank())
+  }
   
-#  p <- p+ facet_wrap(~id)
+  # Set aspect ratio of the graph n/n = square
+  p <- p + theme(aspect.ratio=1/5)
   
-  #Remove upper and right axis
-  
-
+  p <- p  + coord_flip()
+  p <- p + theme(legend.position="top")
   return(p)
   
 }) #close plot_contribs
