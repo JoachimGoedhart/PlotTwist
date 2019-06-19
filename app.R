@@ -404,7 +404,8 @@ ui <- fluidPage(
                   ),
                   tabPanel("Clustering", downloadButton("downloadClusteringPDF", "Download pdf-file"), downloadButton("downloadClusteringPNG", "Download png-file"),
 #                           h4("UNDER DEVELOPMENT"), 
-div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_clust", height="100%")),
+                      plotOutput("plot_clust"),
+#div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_clust", height="100%")),
 NULL
                            ),
 ##### Uncomment for interactive graph panel
@@ -1592,26 +1593,32 @@ output$coolplot <- renderPlot(width = width, height = height, {
 clusterplot_width <- reactive ({ input$clusterplot_width })
 clusterplot_height <- reactive ({ 
   
-  # klaas <- df_grouped()
-  # number_of_clusters <- nlevels(as.factor(klaas$Cluster))
-  # columns <- ceiling((number_of_clusters/3))
+  klaas <- df_grouped()
+  number_of_clusters <- nlevels(as.factor(klaas$Cluster))
+  rows <- ceiling((number_of_clusters/3))
   
-  if (input$show_proportions) input$clusterplot_height*2
-  else input$clusterplot_height
+  if (input$show_proportions) input$clusterplot_height*1.5*rows
+  else input$clusterplot_height*rows
   
   })
   
 
 output$plot_clust <- renderPlot(width = clusterplot_width, height = clusterplot_height, {     
-  plot(plot_clusters())
+#  plot(plot_clusters())
   
+  
+  klaas <- df_grouped()
+  number_of_clusters <- nlevels(as.factor(klaas$Cluster))
+  rows <- ceiling((number_of_clusters/3))
   
   plotlist <- list(plot_clusters(), plot_contribs())
   to_keep <- !sapply(plotlist,is.null)
   plotlist <- plotlist[to_keep]
 
-    grid.arrange(grobs=plotlist, nrow=length(plotlist), ncol=1)
-
+    
+  if (length(plotlist)>1) {
+  grid.arrange(grobs=plotlist, nrow=length(plotlist), ncol=1, heights = c(1, 0.5))
+  } else grid.arrange(grobs=plotlist, nrow=1, ncol=1)
   
   
 }) #close output$heatmap
