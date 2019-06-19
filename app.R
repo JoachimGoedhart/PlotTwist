@@ -41,6 +41,8 @@ library(magrittr)
 library(readxl)
 library(DT)
 library(dtw)
+#library(TSclust)
+
 library(gridExtra)
 
 ##### Uncomment for interactive graph panel
@@ -296,7 +298,7 @@ ui <- fluidPage(
                     #   textInput("range_y2", "Range of the signal (min,max)", value = "")
                     #   
                     # ),
-
+                  downloadButton("downloadClusteredData", "Download clustered data (csv)"),
 
                   NULL  ####### End of Cluster UI #######
   
@@ -988,7 +990,9 @@ df_grouped <- reactive({
   
   #Calculate the distance matrix
   dst <- dist(t(df_wide_minus_t), method = input$method)
-  
+
+# dst <- diss(t(df_wide_minus_t), METHOD =  "COR")
+    
   #Perform cluster analysis on the data
   hc <- hclust(dst, method = input$linkage)
   
@@ -1366,7 +1370,7 @@ plot_clusters <- reactive({
   #### plot individual measurements ####
   p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id"), alpha=input$alphaInput)
   
-  p <- p + stat_summary(fun.y=mean, aes(group=1), geom="line", colour="black", size=2)
+  p <- p + stat_summary(fun.y=mean, aes(group=1), geom="line", colour="black", size=2,alpha=input$alphaInput_summ)
 
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
@@ -1703,7 +1707,17 @@ output$downloadData <- downloadHandler(
   }
 )
 
+############## Export the clustered data in tidy format ###########
 
+output$downloadClusteredData <- downloadHandler(
+  
+  filename = function() {
+    paste("PlotTwist_tidy_clustered", ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(df_grouped(), file, row.names = FALSE)
+  }
+)
 ######## The End; close server ########################  
     # End R-session when browser closed
     # session$onSessionEnded(stopApp)
