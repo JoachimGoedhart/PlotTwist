@@ -247,14 +247,18 @@ ui <- fluidPage(
                   h4("Clustering"),
                   
                   radioButtons(inputId = "method",
-                               label= "Distance measure:",
-                               choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan"),
+                               label= "Clustering method:",
+                               choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan", "k-means" = "kmeans"),
                                selected = "euclidean"),
 
-                  radioButtons(inputId = "linkage",
-                               label= "Linkage method:",
-                               choices = list("Complete" = "complete", "Centroid" ="centroid", "Ward.D2"="ward.D2"),
-                               selected = "complete"),
+                  conditionalPanel(
+                    condition = "input.method != 'kmeans'",
+                  
+                            radioButtons(inputId = "linkage",
+                                         label= "Linkage method:",
+                                         choices = list("Complete" = "complete", "Centroid" ="centroid", "Ward.D2"="ward.D2"),
+                                         selected = "complete")
+                  ),
                   
                   checkboxInput(inputId = "show_proportions",
                                 label = "Show contributions per condition",
@@ -989,21 +993,33 @@ df_grouped <- reactive({
   #Remove Time info
   df_wide_minus_t <- df_wide %>% select(-Time)
   
-  #Calculate the distance matrix
-  dst <- dist(t(df_wide_minus_t), method = input$method)
-
-# dst <- diss(t(df_wide_minus_t), METHOD =  "COR")
+  
+  if (input$method == "kmeans") {
+    km <- kmeans(t(df_wide_minus_t), centers = input$groups)
+    Cluster <- km$cluster
+    df_group <- as.data.frame(Cluster) 
+    df_group$unique_id <- rownames(df_group)
+  } else if (input$method != "kmeans") {
+  
+  
+    #Calculate the distance matrix
+    dst <- dist(t(df_wide_minus_t), method = input$method)
+  
+    #For clustering with the TSclust package:
+    # dst <- diss(t(df_wide_minus_t), METHOD =  "COR")
+      
+    #Perform cluster analysis on the data
+    hc <- hclust(dst, method = input$linkage)
     
-  #Perform cluster analysis on the data
-  hc <- hclust(dst, method = input$linkage)
+    #Define clusters from a cut-off k
+    Cluster <- cutree(hc, k = input$groups)
+    
+    df_group <- as.data.frame(Cluster)
   
+    df_group$unique_id <- rownames(df_group)
+  }  
   
-  #Define clusters from a cut-off k
-  Cluster <- cutree(hc, k = input$groups)
-  df_group <- as.data.frame(Cluster)
 
-  df_group$unique_id <- rownames(df_group)
-  
   #Add group number
   klaas <- klaas %>% left_join(df_group, by="unique_id")
   
@@ -1467,6 +1483,7 @@ plot_map <- reactive({
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
   
+  
   #################### Add labels for perturbations #####################
   
   rang <- as.numeric(strsplit(input$stim_range,",")[[1]])
@@ -1519,8 +1536,10 @@ plot_map <- reactive({
     }
 }
   
-  ########## Do some formatting of the lay-out ##########
+
   
+  ########## Do some formatting of the lay-out ##########
+
   #remove legend (if selected)
   if (input$add_legend == FALSE) {  
     p <- p + theme(legend.position="none")
@@ -1535,8 +1554,10 @@ plot_map <- reactive({
                 NULL)
   
   #remove labels and ticks on y-axis
-  if (input$show_labels_y == FALSE)
-  p <- p + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  # if (input$show_labels_y == FALSE)
+  # p <- p + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  
+
   
   # if title specified
   if (input$add_title == TRUE) {
@@ -1557,7 +1578,7 @@ plot_map <- reactive({
   }
   
   
-  
+
   
   
   # Facetting for heatmap - requires optimization
@@ -1651,10 +1672,13 @@ plot_contribs <- reactive({
   
   
   #### Command to prepare the plot ####
-  p <- ggplot(data=klaas, aes_string(x="id")) 
+  # p <- ggplot(data=klaas, aes_string(x="id", fill="Cluster"))
   
+  #reverse the order of the factors
+  p <- ggplot(data=klaas, aes(x=factor(id,levels = rev(levels(factor(id)))), fill=Cluster)) 
+
   #### plot individual measurements ####
-  p <- p+ geom_bar(aes(fill=Cluster), position = "fill")
+  p <- p +geom_bar(position = position_fill(reverse = TRUE))  
   
   
   # This needs to go here (before annotations)
@@ -1685,6 +1709,7 @@ plot_contribs <- reactive({
   p <- p + theme(aspect.ratio=1/5)
   
   p <- p  + coord_flip()
+
   p <- p + theme(legend.position="top")
   return(p)
   
