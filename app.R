@@ -28,7 +28,9 @@
 # Print variables on the axis from the tidy column names
 # Optimize facetting of heatmap
 # Improve annotation of small multiples (especially text)
-# Implement clustering methods
+
+#Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
+
 
 #options(shiny.maxRequestSize=30*1024^2)
 
@@ -59,6 +61,9 @@ Confidence_level = Confidence_Percentage/100
 Tol_bright <- c('#EE6677', '#228833', '#4477AA', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB')
 Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#332288', '#DDDDDD')
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
+
+#From Color Universal Design (CUD): https://jfly.uni-koeln.de/color/
+cud <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 
 #Read a text file with demo data (comma separated values)
@@ -126,6 +131,7 @@ ui <- fluidPage(
                                                                  "Colorblind safe (bright)" = 2,
                                                                  "Colorblind safe (muted)" = 3,
                                                                  "Colorblind safe (light)" = 4,
+                                                                 "cud" = 6,
                                                                  "User defined"=5),
                                                           selected =  1),
                                              conditionalPanel(condition = "input.adjustcolors == 5",
@@ -267,9 +273,9 @@ ui <- fluidPage(
                   numericInput ("groups", "Number of clusters/groups:", value=2, min = 1, max = 100, step = 1),
                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
+                  sliderInput("limits", "Set lower and upper limit of x-axis", 0, 120, value=c(1,100)), 
                   
-                  
-                  
+
 
                     # checkboxInput(inputId = "indicate_stim2",
                     #               label = "Indicate Baseline/Stimulus",
@@ -532,10 +538,6 @@ df_upload <- reactive({
   columns_to_remove <- columns_to_remove[columns_to_remove != "id"]
 
   
-#  columns_to_remove <- columns_to_remove[-1]
-  
-#  columns_to_remove <- columns_to_remove[-length(columns_to_remove)]
-  
   #Show the columns that can be removed
   updateSelectInput(session, "data_remove", choices = columns_to_remove)
   
@@ -602,6 +604,15 @@ observe({
   updateSelectInput(session, "x_var", choices = var_list, selected="Time")
   updateSelectInput(session, "c_var", choices = var_list, selected="id")
   updateSelectInput(session, "g_var", choices = var_list, selected="Sample")
+
+})
+
+observe({ 
+      klaas <- df_selected()
+      max_Time <- max(klaas$Time)
+      min_Time <- min(klaas$Time)
+      # observe({print(c(max_Time, min_Time))})
+      updateSliderInput(session, "limits", min = min_Time, max =max_Time, value=c(min_Time, max_Time))
 
 })
 
@@ -847,8 +858,6 @@ df_binned <- reactive ({
 
   } else {df_binned <- df_normalized()}
   
-  observe({print(head(df_binned))})
-  
   return(df_binned)
 })
 
@@ -988,6 +997,14 @@ ordered_list <- reactive({
 df_grouped <- reactive({
   
   klaas <-  df_binned() %>% drop_na()
+  
+  #Read limits of x-axis
+  min_Time <- input$limits[1]
+  max_Time <- input$limits[2]
+  
+  #Select timepoints within the set limits
+  klaas <-  klaas %>% filter(Time >= min_Time & Time <= max_Time )
+  
   #Convert to wide format
   df_wide <- klaas %>% select(unique_id, Value,Time)  %>% spread(key=unique_id, value=Value)
   #Remove Time info
@@ -1153,6 +1170,8 @@ plot_data <- reactive({
       newColors <- Tol_muted
     } else if (input$adjustcolors == 4) {
       newColors <- Tol_light
+    } else if (input$adjustcolors == 6) {
+      newColors <- cud
     } else if (input$adjustcolors == 5) {
       newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
     }
@@ -1536,8 +1555,6 @@ plot_map <- reactive({
     }
 }
   
-
-  
   ########## Do some formatting of the lay-out ##########
 
   #remove legend (if selected)
@@ -1655,6 +1672,8 @@ plot_contribs <- reactive({
     newColors <- Tol_muted
   } else if (input$adjustcolors == 4) {
     newColors <- Tol_light
+  } else if (input$adjustcolors == 6) {
+    newColors <- cud
   } else if (input$adjustcolors == 5) {
     newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
   }
@@ -1667,8 +1686,6 @@ plot_contribs <- reactive({
   klaas <- klaas %>% select(Cluster, id, unique_id) %>% distinct()
 
   klaas <- klaas %>% mutate(Cluster = factor(Cluster))
-  
-  observe({print(klaas)})  
   
   
   #### Command to prepare the plot ####
@@ -1751,8 +1768,7 @@ output$downloadClusteredData <- downloadHandler(
   }
 )
 ######## The End; close server ########################  
-    # End R-session when browser closed
-    # session$onSessionEnded(stopApp)
+
 
   } #close server
 
