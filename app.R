@@ -608,11 +608,12 @@ observe({
 })
 
 observe({ 
-      klaas <- df_selected()
+      klaas <- df_upload_tidy()
       max_Time <- max(klaas$Time)
       min_Time <- min(klaas$Time)
-      # observe({print(c(max_Time, min_Time))})
-      updateSliderInput(session, "limits", min = min_Time, max =max_Time, value=c(min_Time, max_Time))
+       updateSliderInput(session, "limits", min = min_Time, max =max_Time, value=c(min_Time, max_Time))
+        
+      # observe({print(c(max_Time, min_Time))}) 
 
 })
 
@@ -1001,8 +1002,9 @@ df_grouped <- reactive({
   #Read limits of x-axis
   min_Time <- input$limits[1]
   max_Time <- input$limits[2]
-  
+
   #Select timepoints within the set limits
+
   klaas <-  klaas %>% filter(Time >= min_Time & Time <= max_Time )
   
   #Convert to wide format
