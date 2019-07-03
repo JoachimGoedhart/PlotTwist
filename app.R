@@ -271,9 +271,9 @@ ui <- fluidPage(
                                 value = FALSE),
                   
                   numericInput ("groups", "Number of clusters/groups:", value=2, min = 1, max = 100, step = 1),
-                  
+                  sliderInput("limits", "Set lower and upper limit of x-axis", 0, 120, value=c(1,100)),                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
-                  sliderInput("limits", "Set lower and upper limit of x-axis", 0, 120, value=c(1,100)), 
+
                   
 
 
@@ -288,26 +288,24 @@ ui <- fluidPage(
                     #               label = "Remove gridlines",
                     #               value = FALSE),
                     # 
+                  h4("Plot Layout"),
+
+                  # conditionalPanel(
+                  #   condition = "input.change_scale2 == true",
+                  #   actionButton('range_lineplot','Copy range from lineplot'),
+                  # 
+                  #   textInput("range_x2", "Range temporal axis (min,max)", value = "")
+                  #   
+                  # ),
+
+                    textInput("range_y3", "Y-axis (min,max); blank for autoscaling", value = ""),
   
                     numericInput("clusterplot_height", "Height (# pixels): ", value = 350),
                     numericInput("clusterplot_width", "Width (# pixels):", value = 600),
   
                   
-                    # 
-                    # checkboxInput(inputId = "change_scale2",
-                    #               label = "Adjust scale", value=FALSE),
-                    # conditionalPanel(
-                    #   condition = "input.change_scale2 == true",
-                    #   actionButton('range_lineplot','Copy range from lineplot'),
-                    # 
-                    #   textInput("range_x2", "Range temporal axis (min,max)", value = "")
-                    #   
-                    # ),
-                    # conditionalPanel(
-                    #   condition = "input.change_scale2 == true",
-                    #   textInput("range_y2", "Range of the signal (min,max)", value = "")
-                    #   
-                    # ),
+
+
                   downloadButton("downloadClusteredData", "Download clustered data (csv)"),
 
                   NULL  ####### End of Cluster UI #######
@@ -1415,6 +1413,21 @@ plot_clusters <- reactive({
   
   ############## Adjust scale if necessary ##########
   
+  #Adjust scale if range for y (min,max) is specified
+  if (input$range_y3 != "" &&  input$change_scale2 == TRUE) {
+    rng_y <- as.numeric(strsplit(input$range_y3,",")[[1]])
+    
+    #If min>max invert the axis
+    if (rng_y[1]>rng_y[2]) {p <- p+ scale_y_reverse()}
+    # 
+    # upper_y <- rng_y[2]
+    # lower_y <- rng_y[1]
+    
+    
+    #Autoscale if rangeis NOT specified
+  } else {rng_y=c(NULL,NULL)}
+  
+  
   # if title specified
   if (input$add_title == TRUE) {
     #Add line break to generate some space
@@ -1451,6 +1464,9 @@ plot_clusters <- reactive({
   p <- p + theme(panel.border = element_blank())
   p <- p + theme(axis.line.x  = element_line(colour = "black"), axis.line.y  = element_line(colour = "black"))
   # p <- p + theme(aspect.ratio=1)
+  
+  p <- p + coord_cartesian(ylim=c(rng_y[1],rng_y[2]))
+  
   return(p)
   
 }) #close plot_clusters
