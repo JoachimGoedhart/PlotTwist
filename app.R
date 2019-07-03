@@ -363,7 +363,7 @@ ui <- fluidPage(
                      textInput("lab_y", "Y-axis:", value = "")
                      
                    ),
-                   
+
                    checkboxInput(inputId = "adj_fnt_sz",
                                  label = "Change font size",
                                  value = FALSE),
@@ -379,7 +379,15 @@ ui <- fluidPage(
                      condition = "input.color_data == true || input.color_stats == true || input.data_form=='dataaspixel'",
                      checkboxInput(inputId = "add_legend",
                                    label = "Add legend",
-                                   value = FALSE))
+                                   value = FALSE)),
+                   
+                   
+                   conditionalPanel(
+                     condition = "input.add_legend == true",
+                     textInput("legend_title", "Legend title:", value = "")
+                   ),
+                   
+                   NULL
   ),
                  conditionalPanel(
                    condition = "input.tabs=='About'",
@@ -1215,6 +1223,7 @@ plot_data <- reactive({
     } else if (input$summaryInput == TRUE  && input$add_CI == TRUE) {
       p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
       p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
+      p <- p + guides(fill = FALSE)
     } else if (input$summaryInput == FALSE  && input$add_CI == TRUE) {
       p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
     }
@@ -1224,7 +1233,6 @@ plot_data <- reactive({
     p <- p+ theme_light(base_size = 16)
     
     ############## Adjust scale if necessary ##########
-
     
     #Adjust scale if range for x (min,max) is specified
     if (input$range_x != "" &&  input$change_scale == TRUE) {
@@ -1355,6 +1363,14 @@ plot_data <- reactive({
     if (input$add_legend == FALSE) {  
       p <- p + theme(legend.position="none")
     }
+    
+
+    
+    if (input$add_legend == TRUE) {
+      
+       p <- p + labs(color = input$legend_title, fill=input$legend_title)
+    }
+    
     
     #remove gridlines (if selected)
     if (input$no_grid == TRUE) {  
