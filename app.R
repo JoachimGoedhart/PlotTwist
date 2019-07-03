@@ -383,7 +383,7 @@ ui <- fluidPage(
                    
                    
                    conditionalPanel(
-                     condition = "input.add_legend == true",
+                     condition = "input.add_legend == true && input.data_form!='dataaspixel'",
                      textInput("legend_title", "Legend title:", value = "")
                    ),
                    
