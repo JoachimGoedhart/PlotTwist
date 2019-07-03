@@ -1430,7 +1430,7 @@ plot_clusters <- reactive({
   ############## Adjust scale if necessary ##########
   
   #Adjust scale if range for y (min,max) is specified
-  if (input$range_y3 != "" &&  input$change_scale2 == TRUE) {
+  if (input$range_y3 != "") {
     rng_y <- as.numeric(strsplit(input$range_y3,",")[[1]])
     
     #If min>max invert the axis
