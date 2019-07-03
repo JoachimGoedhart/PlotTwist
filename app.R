@@ -1701,6 +1701,10 @@ plot_contribs <- reactive({
   
   klaas <- df_grouped()
   
+  
+  #Ordering of Conditions according to supplied order (Uncomment for alphabetical order)
+  klaas$id <- factor(klaas$id, levels=unique(klaas$id))
+  
   klaas <- klaas %>% select(Cluster, id, unique_id) %>% distinct()
 
   klaas <- klaas %>% mutate(Cluster = factor(Cluster))
