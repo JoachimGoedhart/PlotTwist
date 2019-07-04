@@ -157,6 +157,8 @@ ui <- fluidPage(
                   numericInput("plot_width", "Width (# pixels):", value = 600),
                   NULL),
                  
+####################### UI Panel for Data Upload ###############
+                 
                  conditionalPanel(
                    condition = "input.tabs=='Data upload'",
                    h4("Data upload (First column used for x-axis)"),
@@ -169,7 +171,7 @@ ui <- fluidPage(
                             "Paste data" = 4)
                      ,
                      selected =  1),
-
+                   
                    conditionalPanel(
                      condition = "input.data_input=='3'",
                      h5(""),
@@ -211,7 +213,10 @@ ui <- fluidPage(
                       selectInput("x_var", "Select variable for x-axis", choices = ""),
                       selectInput("y_var", "Select variable for y-axis", choices = ""),
                       selectInput("g_var", "Identifier of single measurement", choices = ""),
-                      selectInput("c_var", "Identifier of condition", choices = "")
+                      selectInput("c_var", "Identifier of condition", choices = ""),
+                      selectInput("filter_column", "Filter based on this parameter:", choices = ""),
+                      selectInput("remove_these_conditions", "Remove these conditions:", "", multiple = TRUE)
+                      
 
                     ),
                    h4("Normalization"),
@@ -561,11 +566,29 @@ output$data_uploaded <- renderDataTable({
 ################ REMOVE SELECTED COLUMNS #########
 df_filtered <- reactive({     
   
-  if (!is.null(input$data_remove)) {
-    columns = input$data_remove
-    df <- df_upload() %>% select(-one_of(columns))
-  } else if (is.null(input$data_remove)) {
-    df <- df_upload()}
+
+    ###### REMOVE Columns from wide DATA FRAME ######    
+  
+      if (!is.null(input$data_remove)) {
+        columns = input$data_remove
+        df <- df_upload() %>% select(-one_of(columns))
+
+    
+    ###### FILTER VARIABLES FROM TIDY DATA FRAME ######    
+    } else if (!is.null(input$remove_these_conditions) && input$filter_column != "none") {
+
+    filter_column <- input$filter_column
+    remove_these_conditions <- input$remove_these_conditions
+
+    observe({print(remove_these_conditions)})
+
+    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+    df <- df_upload() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
+
+    # To select columns to keep use this:
+    # df <- df_upload() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
+    
+  } else {df <- df_upload()}
   
 })
 
@@ -590,8 +613,8 @@ df_upload_tidy <- reactive({
   
   else if(input$tidyInput == TRUE ) {
 
-   klaas <- koos
-   
+#   klaas <- koos
+   klaas <- df_filtered()   
 #        c_choice <- input$c_var
 #        g_choice <- input$g_var
 #        klaas <- unite(klaas, unique_id, c(c_choice, g_choice), sep="_", remove = FALSE)
@@ -603,14 +626,35 @@ df_upload_tidy <- reactive({
 ##### Get Variables from the input ##############
 
 observe({ 
-  var_names  <- names(df_upload_tidy())
+#  var_names  <- names(df_upload_tidy())
+  var_names  <- names(df_upload())
   var_list <- c("none", var_names)
   #        updateSelectInput(session, "colour_list", choices = var_list)
   updateSelectInput(session, "y_var", choices = var_list, selected="Value")
   updateSelectInput(session, "x_var", choices = var_list, selected="Time")
   updateSelectInput(session, "c_var", choices = var_list, selected="id")
   updateSelectInput(session, "g_var", choices = var_list, selected="Sample")
+  updateSelectInput(session, "filter_column", choices = var_list, selected="none")
+})
 
+
+########### When x_var is selected for tidy data, get the list of conditions
+
+observeEvent(input$x_var != 'none' && input$y_var != 'none' && input$filter_column != 'none', {
+  
+    if (input$filter_column != 'none') {
+      
+        filter_column <- input$filter_column
+          
+        if (filter_column == "") {filter_column <- NULL}
+          
+        koos <- df_upload_tidy() %>% select(for_filtering = !!filter_column)
+        
+        conditions_list <- levels(factor(koos$for_filtering))
+        observe(print((conditions_list)))
+        updateSelectInput(session, "remove_these_conditions", choices = conditions_list)
+    }
+  
 })
 
 observe({ 
