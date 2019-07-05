@@ -24,9 +24,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # ToDo
-# Differentiate between factors and numbers for selecting display in case of tidy data
 # Print variables on the axis from the tidy column names
-# Optimize facetting of heatmap
+# Optimize facetting of heatmap (complicated, especially in combination with annotation)
 # Improve annotation of small multiples (especially text)
 
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
@@ -80,11 +79,12 @@ ui <- fluidPage(
                    condition = "input.tabs=='Plot'",
                    h4("Data"),
                    radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot", "Heatmap" = "dataaspixel"), selected = "dataasline"),
+
                    conditionalPanel(condition = "input.data_form != 'dataaspixel'",
                                     
-                                    
+                            checkboxInput("multiples", "Small multiples", value = FALSE),                                    
                             checkboxInput("thicken", "The plot thickens", value = FALSE),
-                            checkboxInput("multiples", "Small multiples", value = FALSE),
+
                    
                              sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
                              h4("Statistics"),
@@ -1023,7 +1023,7 @@ ordered_list <- reactive({
     
     #Get the ordered column names from the clustered dataframe
     reordered_list <- colnames(df_clustered)
-    observe({ print(reordered_list) })
+#    observe({ print(reordered_list) })
   }
   
 
@@ -1538,8 +1538,9 @@ plot_map <- reactive({
   number_of_conditions <- nlevels(as.factor(klaas$id))
   
   #Get the maximum number of traces
-  max_n <- max(koos$n)
-  #observe({print(n)})
+  max_n <- sum(koos$n[1:number_of_conditions])
+
+  # observe({print(max_n)})
   
   klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
   koos <- koos %>% mutate(id = as.factor(id))
@@ -1558,7 +1559,9 @@ plot_map <- reactive({
   p <- p + geom_raster(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))+ scale_fill_viridis_c()
 
   # Setting the order of the x-axis
+  if (input$multiples == FALSE || number_of_conditions == 1) {
   p <- p + scale_y_discrete(limits=custom_order)
+  }
   
   if (input$change_scale == TRUE) {
     rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
@@ -1566,7 +1569,6 @@ plot_map <- reactive({
     
     rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
     p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]))
-    
   } 
   
   # This needs to go here (before annotations)
@@ -1605,21 +1607,21 @@ plot_map <- reactive({
     
     if(input$stim_shape == "bar") {
       for (i in 0:nsteps) {
-        p <- p + annotate("rect", xmin=rang[(i*2)+1]-0.5, xmax=rang[(i*2)+2]+0.5, ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
-        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+3, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
       }
     } else if (input$stim_shape == "box") {
       
       for (i in 0:nsteps) {
         p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=0.5, ymax=max_n+0.5, fill=NA, color=stimColors[i+1],size=1)
-        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+1.2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+3.2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
       }
       
     } else if (input$stim_shape == "both") {
       for (i in 0:nsteps) {
-        p <- p + annotate("rect", xmin=rang[(i*2)+1]-0.5, xmax=rang[(i*2)+2]+0.5, ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
+        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
         p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=0.5, ymax=max_n+0.5, fill=NA, color=stimColors[i+1],size=1)
-        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+3, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
       }
       
     }
@@ -1668,10 +1670,12 @@ plot_map <- reactive({
 
   
   
-  # Facetting for heatmap - requires optimization
-  # if (input$multiples == TRUE && number_of_conditions > 1) {
-  #     p <- p+ facet_grid(id~.)
-  # }
+  # Facetting for heatmap - requires optimization. Can be done, but is complicated, especially in combination with annotation of stimulus
+  # https://jcoliver.github.io/learn-r/006-heatmaps.html
+#  if (input$multiples == TRUE && number_of_conditions > 1) {
+#    p <- p+ facet_grid(id~., scales = "free_y", space = "free_y")
+#    p <- p+ facet_grid(id~.)
+#  }
     
 
   
