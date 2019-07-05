@@ -29,7 +29,7 @@
 # Optimize facetting of heatmap
 # Improve annotation of small multiples (especially text)
 
-#Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
+# Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
 
 #options(shiny.maxRequestSize=30*1024^2)
@@ -204,7 +204,7 @@ ui <- fluidPage(
                                   label = "These data are Tidy (implemented!)",
                                   value = FALSE),
                    conditionalPanel(
-                     condition = "input.tidyInput==false", selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
+                     condition = "input.tidyInput==false", selectInput("data_remove", "Deselect these columns:", "", multiple = TRUE)),
                    
                     conditionalPanel(condition = "input.tidyInput==true",
                       h5("",
@@ -215,7 +215,7 @@ ui <- fluidPage(
                       selectInput("g_var", "Identifier of single measurement", choices = ""),
                       selectInput("c_var", "Identifier of condition", choices = ""),
                       selectInput("filter_column", "Filter based on this parameter:", choices = ""),
-                      selectInput("remove_these_conditions", "Remove these conditions:", "", multiple = TRUE)
+                      selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE)
                       
 
                     ),
@@ -322,9 +322,7 @@ ui <- fluidPage(
                                                 
                    h4("Labels"),
                    
-                   
-                   
-                   ########
+
                    checkboxInput(inputId = "indicate_stim",
                                  label = "Indicate Baseline/Stimulus",
                                  value = FALSE),
@@ -342,13 +340,6 @@ ui <- fluidPage(
                      
                      
                      NULL),
-                   
-                   
-                   ###############
-                   
-                   
-                   
-                   
                    
                    
                    checkboxInput(inputId = "add_title",
@@ -583,6 +574,7 @@ df_filtered <- reactive({
     observe({print(remove_these_conditions)})
 
     #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+    # https://dplyr.tidyverse.org/reference/filter.html
     df <- df_upload() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
 
     # To select columns to keep use this:
