@@ -3,19 +3,25 @@ A Shiny App for plotting Time dependent data
 
 ### About PlotTwist
   
-PlotTwist (Plotting Time-dependent data With Indication of the STimulus) is an app for visualizing the data and statistics of time-dependent measurements (or other continuous data, such as spectra). The philosophy of the approach is that plotting the raw data (instead of a summary) improves transparency and interpretation. To further facilitate the comparison, the mean and 95% CI can be added. The user has full control over the visibility of the raw data and statistics by adjustment of the transparency (alpha).
+PlotTwist (Plotting Time-dependent data With Indication of the STimulus) is an app for visualizing the data and statistics of time-dependent measurements (or other continuous data, such as spectra). The philosophy of the approach is that plotting the raw data (instead of a summary) improves transparency and interpretation. To facilitate the visualization of individual measurements, the data can be shown as 'small mutliples' or in 'heatmap-style'. To further facilitate the comparison, the mean and 95% CI can be added. The user has full control over the visibility of the raw data and statistics by adjustment of the transparency (alpha).
 The comparison of multiple conditions is enabled by multiple file upload (csv or xls format), where each file represents a condition.
-There is an option to indicate the time window during which a stimulus was applied. This will overlay a transparant grey box.
-For more information on the underlying code see these blogs:
+
+The app accepts both wide (spreadsheet-style) data and tidy data. Deselection of user-defined columns or conditions is possible. Several methods for normalizing the data are implemented. There are several options for annotating the plot, e.g. to indicate the time and nature of a perturbation. This will overlay a transparant grey box, add a bar on top of the graph or both. For more information on the underlying code and #dataViz styles see these blogs:
 
 [Visualizing data with R/ggplot2 - It's about time](http://thenode.biologists.com/visualizing-data-with-r-ggplot2/education/)
 
 [Visualizing data with R/ggplot2 - One more time](http://thenode.biologists.com/visualizing-data-one-more-time/education/)
 
+[Normalization methods](http://thenode.biologists.com/data-normalization/research/)
+
+[Visualizing heterogeneity](http://thenode.biologists.com/visualizing-heterogeneity-of-imaging-data/research/)
+
 
 ### Running the App
 
-Currently, the app can only run from R/Rstudio.
+The web-tool runs from a shiny server, and can be accessed [here](https://huygens.science.uva.nl/PlotTwist/)
+
+Alternatively, the app can run from R/Rstudio.
 
 Give it a quick try by running it directly from Github. In the command line (in R or Rstudio) type:
 
@@ -30,8 +36,9 @@ Or download it to use it offline:
 -Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
 
 This should launch a web browser with the Shiny app.
-Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl)
-
+Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl, magrittr, DT, dtw)
+Run this command in R/Rstudio to download and install all the packages at once:
+-install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "DT", "dtw")
 
 ### Credits
 
@@ -55,6 +62,3 @@ The data for the x-axis does not need to be time. Also other continuous data can
 ![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Spectra_example1.png "Output")
 
   
-### Potential improvements/additions:
-
-* Plot individual traces in heatmap-style

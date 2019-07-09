@@ -69,6 +69,9 @@ cud <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55
 df_wide_example <- read.csv("Data_wide_example_time_single.csv", na.strings = "")
 df_tidy_example <- read.csv("Data_tidy_example_time_multi.csv")
 
+# Create a reactive object here that we can share between all the sessions.
+vals <- reactiveValues(count=0)
+
 ###### UI: User interface #########
 
 ui <- fluidPage(
@@ -387,7 +390,12 @@ ui <- fluidPage(
   ),
                  conditionalPanel(
                    condition = "input.tabs=='About'",
-                   h4("About")    
+                   
+                   #Session counter: https://gist.github.com/trestletech/9926129
+                   h4("About"),  "There are currently", 
+                   verbatimTextOutput("count"),
+                   "session(s) connected to this app." 
+                   
                  ),
                  
                  conditionalPanel(
@@ -435,6 +443,8 @@ NULL
 
 
 server <- function(input, output, session) {
+  
+  isolate(vals$count <- vals$count + 1)
 
 ##################### Synchronize scales between tabs ##################  
   
@@ -1111,7 +1121,8 @@ output$downloadPlotPDF <- downloadHandler(
   },
   content <- function(file) {
     pdf(file, width = input$myWidth/72, height = input$myHeight/72)
-    plot(plot_data())
+    if (input$data_form != "dataaspixel") plot(plot_data())
+    else plot(plot_map())
     dev.off()
   },
   contentType = "application/pdf" # MIME type of the image
@@ -1123,7 +1134,8 @@ output$downloadPlotPNG <- downloadHandler(
   },
   content <- function(file) {
     png(file, width = input$plot_width*4, height = input$plot_height*4, res=300)
-    plot(plot_data())
+    if (input$data_form != "dataaspixel") plot(plot_data())
+    else plot(plot_map())
     dev.off()
   },
   contentType = "application/png" # MIME type of the image
@@ -1314,7 +1326,7 @@ plot_data <- reactive({
     stimText <- c("","","","","")
     
     if (input$indicate_stim == TRUE && input$stim_text !="") {
-      stimText <- gsub("\\s","", strsplit(input$stim_text,",")[[1]])
+      stimText <- strsplit(input$stim_text,",")[[1]]
     }
 
     
@@ -1582,7 +1594,7 @@ plot_map <- reactive({
   stimText <- c("","","","","")
   
   if (input$indicate_stim == TRUE && input$stim_text !="") {
-    stimText <- gsub("\\s","", strsplit(input$stim_text,",")[[1]])
+    stimText <- strsplit(input$stim_text,",")[[1]]
   }
   
   if (input$indicate_stim == TRUE && input$stim_colors !="") {
@@ -1845,8 +1857,21 @@ output$downloadClusteredData <- downloadHandler(
     write.csv(df_grouped(), file, row.names = FALSE)
   }
 )
-######## The End; close server ########################  
 
+
+    ########### Update Counter #########
+    # Reactively update the client.
+    output$count <- renderText({
+      vals$count
+    })
+
+    # When a session ends, decrement the counter.
+    session$onSessionEnded(function(){
+      
+      isolate(vals$count <- vals$count - 1)
+    })
+
+######## The End; close server ########################  
 
   } #close server
 
