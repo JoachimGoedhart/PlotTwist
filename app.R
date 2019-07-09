@@ -1568,20 +1568,36 @@ plot_map <- reactive({
   p <- ggplot(data=klaas, aes_string(x="Time"))
   
   #geom_raster is faster than geom_tile
-  p <- p + geom_raster(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))+ scale_fill_viridis_c()
+  p <- p + geom_raster(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))
+  #+ scale_fill_viridis_c()
 
-  # Setting the order of the x-axis
+  # Setting the order of the y-axis
   if (input$multiples == FALSE || number_of_conditions == 1) {
   p <- p + scale_y_discrete(limits=custom_order)
   }
   
-  if (input$change_scale == TRUE) {
-    rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
-    p <- p + xlim(rng_x[1],rng_x[2])  
-    
-    rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
-    p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]))
-  } 
+  rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
+#  if (rng_y[1]=="" || rng_y[2]=="") {rng_y <- c("","")}
+  
+  
+  rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
+  p <- p + xlim(rng_x[1],rng_x[2])  
+  
+  # if (input$change_scale == TRUE && rng_y[1]!=NA && length(rng_y)>1) {
+  #     if (rng_y[2]<rng_y[1]) {
+  #     direct <- -1
+  #     max_y <- rng_y[1]
+  #     min_y <- rng_y[2]
+  #   } else {
+  #     direct <- 1
+  #     min_y <- rng_y[1]
+  #     max_y <- rng_y[2]
+  #   }
+  # 
+  #   p <- p+ scale_fill_viridis_c(limits=c(min_y,max_y), direction = direct)
+  # } 
+
+  p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]))
   
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
