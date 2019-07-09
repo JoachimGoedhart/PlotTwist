@@ -19,15 +19,21 @@ The app accepts both wide (spreadsheet-style) data and tidy data. Deselection of
 
 ### Running the App
 
-The web-tool runs from a shiny server, and can be accessed [here](https://huygens.science.uva.nl/PlotTwist/)
+The web-tool runs from a shiny server, and can be accessed at: [https://huygens.science.uva.nl/PlotTwist/](https://huygens.science.uva.nl/PlotTwist/)
 
 Alternatively, the app can run from R/Rstudio.
 
-Give it a quick try by running it directly from Github. In the command line (in R or Rstudio) type:
+#### Preparations
+Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl, magrittr, DT, dtw). 
+Run this command in R/Rstudio to download and install all the packages (only needs to be done once):
+
+install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "DT", "dtw")
+
+o The first option is running it directly from Github. In the command line (in R or Rstudio) type:
 
 shiny::runGitHub('PlotTwist', 'JoachimGoedhart')
 
-Or download it to use it offline:
+o The second option is download the app and to use it offline:
 
 -download the app.R and csv files with example data.
 
@@ -36,9 +42,7 @@ Or download it to use it offline:
 -Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
 
 This should launch a web browser with the Shiny app.
-Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl, magrittr, DT, dtw)
-Run this command in R/Rstudio to download and install all the packages at once:
--install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "DT", "dtw")
+
 
 ### Credits
 
