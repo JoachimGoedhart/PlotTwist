@@ -26,18 +26,18 @@ Alternatively, the app can run from R/Rstudio.
 #### Preparations
 Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl, magrittr, DT, dtw). 
 Run this command in R/Rstudio to download and install all the packages (only needs to be done once):
-
+```
 install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "DT", "dtw")
-
+```
 o The first option is running it directly from Github. In the command line (in R or Rstudio) type:
-
+```
 shiny::runGitHub('PlotTwist', 'JoachimGoedhart')
-
+```
 o The second option is download the app and to use it offline:
 
--download the app.R and csv files with example data.
+-download the `app.R` and csv files (`Data_wide_example_time_single.csv` and `Data_tidy_example_time_multi.csv`) with example data.
 
--Run RStudio and load app.R
+-Run RStudio and load `app.R`
 
 -Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
 
@@ -56,6 +56,10 @@ PlotTwist is created and maintained by Joachim Goedhart ([@joachimgoedhart](http
 Data from a single file with stimulation indicated by a grey box:
 
 ![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Timeseries_example1.png "Output")
+
+Data in a heatmap presentation with annotation of the different perturbations:
+
+![alt text](https://github.com/JoachimGoedhart/PlotTwist/blob/master/Timeseries_heatmap.png "Output")
 
 Data from multiple files, means (and 95% CI) of each condition have different colors:
 

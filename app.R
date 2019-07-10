@@ -27,6 +27,8 @@
 # Print variables on the axis from the tidy column names
 # Optimize facetting of heatmap (complicated, especially in combination with annotation)
 # Improve annotation of small multiples (especially text)
+# Add option to invert colors of heatmap?
+
 
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
