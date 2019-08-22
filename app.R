@@ -28,8 +28,8 @@
 # Optimize facetting of heatmap (complicated, especially in combination with annotation)
 # Improve annotation of small multiples (especially text)
 # Add option to invert colors of heatmap?
-
-
+# look into Partitioning Around Medoids -> pam{cluster}
+# look into Matrix Profile for clustering (tsmp)
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
 
@@ -45,6 +45,7 @@ library(readxl)
 library(DT)
 library(dtw)
 #library(TSclust)
+#library(tsmp)
 
 library(gridExtra)
 
@@ -64,7 +65,7 @@ Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677',
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
 
 #From Color Universal Design (CUD): https://jfly.uni-koeln.de/color/
-cud <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+cud <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
 
 
 #Read a text file with demo data (comma separated values)
@@ -154,7 +155,8 @@ ui <- fluidPage(
                             radioButtons(inputId = "ordered",
                                          label= "Order of the lines:",
                                          choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int", "From hierarchical clustering" = "hc"),
-                                         selected = "none")
+                                         selected = "none"),
+                            checkboxInput("show_labels_y", "Show object labels (y-axis)", value=FALSE)
                   ),
                             
  
@@ -206,19 +208,17 @@ ui <- fluidPage(
                        selected = "\t")),
                    # 
                    checkboxInput(inputId = "tidyInput",
-                                  label = "These data are Tidy (implemented!)",
+                                  label = "These data are Tidy",
                                   value = FALSE),
                    conditionalPanel(
                      condition = "input.tidyInput==false", selectInput("data_remove", "Deselect these columns:", "", multiple = TRUE)),
                    
                     conditionalPanel(condition = "input.tidyInput==true",
-                      h5("",
-                         a("Click here for more info on tidy data",
-                           href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
+            
                       selectInput("x_var", "Select variable for x-axis", choices = ""),
                       selectInput("y_var", "Select variable for y-axis", choices = ""),
-                      selectInput("g_var", "Identifier of single measurement", choices = ""),
-                      selectInput("c_var", "Identifier of condition", choices = ""),
+                      selectInput("g_var", "Identifier of samples", choices = ""),
+                      selectInput("c_var", "Identifier of conditions", choices = ""),
                       selectInput("filter_column", "Filter based on this parameter:", choices = ""),
                       selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE)
                       
@@ -250,7 +250,14 @@ ui <- fluidPage(
                      condition = "input.normalization==true", (downloadButton("downloadData", "Download normalized tidy data (csv)"))),
                    
                    hr(),
+                   checkboxInput(inputId = "info_data",
+                                 label = "Show information on data formats",
+                                 value = FALSE),
                    
+                   conditionalPanel(
+                     condition = "input.info_data==true",
+                     img(src = 'Data_format_time.png', width = '100%'), h5(""), a("Information on converting wide data to the tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
+                   ),
                    NULL
                  ),
                      
@@ -265,7 +272,8 @@ ui <- fluidPage(
                   radioButtons(inputId = "method",
                                label= "Clustering method:",
                                choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan", "k-means" = "kmeans"),
-                               selected = "euclidean"),
+ #                              choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan", "k-means" = "kmeans", "Matrix Profile" = "mp"),
+                                selected = "euclidean"),
 
                   conditionalPanel(
                     condition = "input.method != 'kmeans'",
@@ -467,13 +475,6 @@ observeEvent(input$change_scale2, {
 })
   
 
-# observeEvent(input$range_lineplot, {
-#   updateTextInput(session, "range_x2", value = input$range_x)
-#   updateTextInput(session, "range_y2", value = input$range_y)
-#   
-# })
-
-
 ###### DATA INPUT ###################
   
 df_upload <- reactive({
@@ -589,8 +590,6 @@ df_filtered <- reactive({
     # https://dplyr.tidyverse.org/reference/filter.html
     df <- df_upload() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
 
-    # To select columns to keep use this:
-    # df <- df_upload() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
     
   } else {df <- df_upload()}
   
@@ -661,15 +660,22 @@ observeEvent(input$x_var != 'none' && input$y_var != 'none' && input$filter_colu
   
 })
 
-observe({ 
-      klaas <- df_upload_tidy()
-      max_Time <- max(klaas$Time)
-      min_Time <- min(klaas$Time)
-       updateSliderInput(session, "limits", min = min_Time, max =max_Time, value=c(min_Time, max_Time))
-        
-      # observe({print(c(max_Time, min_Time))}) 
+
+observeEvent(input$tabs, {
+  # Only after data upload and pressing the "Clustering" tab the min and max valeu for time will be determined and used to update the "Trim" slider
+  if (input$tabs == "Clustering") {
+    # observe({print("Cluster tab selected")}) 
+    klaas <- df_upload_tidy()
+            
+    max_Time <- max(klaas$Time)
+    min_Time <- min(klaas$Time)
+
+    updateSliderInput(session, "limits", min = min_Time, max =max_Time, value=c(min_Time, max_Time))
+  }
 
 })
+
+
 
 ########### GET INPUT VARIABLEs FROM HTML ##############
 
@@ -682,7 +688,7 @@ observe({
   if (!is.null(query[['data']])) {
     presets_data <- query[['data']]
     presets_data <- unlist(strsplit(presets_data,";"))
-    observe(print((presets_data)))
+#    observe(print((presets_data)))
     
     updateRadioButtons(session, "data_input", selected = presets_data[1])    
     updateCheckboxInput(session, "tidyInput", value = presets_data[2])
@@ -692,6 +698,11 @@ observe({
     updateRadioButtons(session, "norm_type", selected = presets_data[4])    
     updateTextInput(session, "base_range", value= presets_data[5])
     
+    
+    if (presets_data[1] == "1" || presets_data[1] == "2") {
+      observe({print(input$data_input)})
+      updateTabsetPanel(session, "tabs", selected = "Plot")
+    }
   }
   
   ############ ?vis ################
@@ -763,10 +774,44 @@ observe({
     updateTextInput(session, "lab_y", value= presets_label[5])
     
     updateCheckboxInput(session, "adj_fnt_sz", value = presets_label[6])
-    updateNumericInput(session, "fnt_sz_labs", value= presets_label[7])
-    updateNumericInput(session, "fnt_sz_ax", value= presets_label[8])
-#    updateCheckboxInput(session, "add_description", value = presets_label[9])
+    updateNumericInput(session, "fnt_sz_title", value= presets_label[7])
+    updateNumericInput(session, "fnt_sz_labs", value= presets_label[8])
+    
+    updateNumericInput(session, "fnt_sz_ax", value= presets_label[9])
+    updateNumericInput(session, "fnt_sz_stim", value= presets_label[10])
+    updateCheckboxInput(session, "add_legend", value = presets_label[11])    
+    updateTextInput(session, "legend_title", value= presets_label[12])
+    
+    #    updateCheckboxInput(session, "add_description", value = presets_label[9])
   }
+  
+  
+  
+
+  
+  
+  
+  ############ ?stim ################
+  
+  if (!is.null(query[['stim']])) {
+    
+    presets_stim <- query[['stim']]
+    presets_stim <- unlist(strsplit(presets_stim,";"))
+    observe(print((presets_stim)))
+    
+    updateCheckboxInput(session, "indicate_stim", value = presets_stim[1])
+#    updateRadioButtons(session, "stim_shape", selected = presets_stim[2])
+    updateTextInput(session, "stim_range", value= presets_stim[3])
+    updateTextInput(session, "stim_text", value= presets_stim[4])
+    updateTextInput(session, "stim_colors", value= presets_stim[5])
+
+    
+    
+  }
+  
+  
+  
+  
   
 #   ############ ?url ################
 #   
@@ -809,8 +854,9 @@ url <- reactive({
     color <- c(input$colour_list, input$user_color_list)
   }
   
-  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_labs, input$fnt_sz_ax, input$add_description)
-  
+  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_title, input$fnt_sz_labs, input$fnt_sz_ax, input$fnt_sz_stim, input$add_legend, input$legend_title)
+  stim <- c(input$indicate_stim, input$stim_shape, input$stim_range, input$stim_text, input$stim_colors)
+
   #replace FALSE by "" and convert to string with ; as seperator
   data <- sub("FALSE", "", data)
   data <- paste(data, collapse=";")
@@ -832,9 +878,13 @@ url <- reactive({
   label <- paste(label, collapse=";")
   label <- paste0("label=", label) 
   
+  stim <- sub("FALSE", "", stim)
+  stim <- paste(stim, collapse=";")
+  stim <- paste0("stim=", stim) 
+  
   if (input$data_input == "5") {url <- paste("url=",input$URL,sep="")} else {url <- NULL}
   
-  parameters <- paste(data, vis,layout,color,label,url, sep="&")
+  parameters <- paste(data, vis,layout,color,label,stim,url, sep="&")
   
   preset_URL <- paste(base_URL, parameters, sep="?")
   
@@ -847,7 +897,7 @@ url <- reactive({
 ############# Pop-up that displays the URL to 'clone' the current settings ################
 
 observeEvent(input$settings_copy , {
-  showModal(urlModal(url=url(), title = "Use the URL to launch PlotsOfData with the current setting"))
+  showModal(urlModal(url=url(), title = "Use the URL to launch PlotTwist with the current setting"))
 })
 
 # observeEvent(input$legend_copy , {
@@ -1061,25 +1111,57 @@ df_grouped <- reactive({
 
   klaas <-  klaas %>% filter(Time >= min_Time & Time <= max_Time )
   
+
+  
   #Convert to wide format
   df_wide <- klaas %>% select(unique_id, Value,Time)  %>% spread(key=unique_id, value=Value)
   #Remove Time info
   df_wide_minus_t <- df_wide %>% select(-Time)
-  
+
+
   
   if (input$method == "kmeans") {
     km <- kmeans(t(df_wide_minus_t), centers = input$groups)
     Cluster <- km$cluster
     df_group <- as.data.frame(Cluster) 
     df_group$unique_id <- rownames(df_group)
-  } else if (input$method != "kmeans") {
-  
+  } else if (input$method == "mp") {
+    tdat <- t(df_wide_minus_t)
+    
+    ### Matrix Pofile distance matrix #####
+
+    D <- data.frame(row.names = rownames(tdat))
+#    observe({print(head(D))})
+    nobs <-  nrow(tdat)
+    window <- floor(ncol(tdat)/20)
+    if (window < 4) {window <- 4}
+
+    for (i in 1:nobs) {
+      for (j in 1:nobs){
+        D[i,j]=mpdist(tdat[i,],tdat[j,],window)
+      }
+    }
+#    observe({print(head(D))})
+    
+    dst <- as.dist(D)
+
+    #Perform cluster analysis on the data
+    hc <- hclust(dst, method = input$linkage)
+    
+    #Define clusters from a cut-off k
+    Cluster <- cutree(hc, k = input$groups)
+
+    
+    df_group <- as.data.frame(Cluster)
+
+    df_group$unique_id <- rownames(df_group)
+    
+  } else {
+    
   
     #Calculate the distance matrix
     dst <- dist(t(df_wide_minus_t), method = input$method)
   
-    #For clustering with the TSclust package:
-    # dst <- diss(t(df_wide_minus_t), METHOD =  "COR")
       
     #Perform cluster analysis on the data
     hc <- hclust(dst, method = input$linkage)
@@ -1095,6 +1177,7 @@ df_grouped <- reactive({
 
   #Add group number
   klaas <- klaas %>% left_join(df_group, by="unique_id")
+
   
   return(klaas)
   
@@ -1637,21 +1720,21 @@ plot_map <- reactive({
     
     if(input$stim_shape == "bar") {
       for (i in 0:nsteps) {
-        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
-        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+3, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+        p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=max_n+0.8, ymax=max_n+1.3+(max_n*0.02), fill=stimColors[i+1])
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+1.7+(max_n*0.05), alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
       }
     } else if (input$stim_shape == "box") {
       
       for (i in 0:nsteps) {
         p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=0.5, ymax=max_n+0.5, fill=NA, color=stimColors[i+1],size=1)
-        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+3.2, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+1.3+(max_n*0.05), alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
       }
       
     } else if (input$stim_shape == "both") {
       for (i in 0:nsteps) {
         p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=max_n+0.8, ymax=max_n+1.3, fill=stimColors[i+1])
         p <- p + annotate("rect", xmin=rang[(i*2)+1], xmax=rang[(i*2)+2], ymin=0.5, ymax=max_n+0.5, fill=NA, color=stimColors[i+1],size=1)
-        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+3, alpha=1, alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
+        p <- p + annotate("text", x=rang[(i*2)+1]+0.5*(rang[(i*2)+2]-rang[(i*2)+1]), y=max_n+1.5+(max_n*0.05), alpha=1, color=stimColors[i+1], size=fnt_sz_stim,label=paste(stimText[i+1]))
       }
       
     }
@@ -1673,8 +1756,8 @@ plot_map <- reactive({
                 NULL)
   
   #remove labels and ticks on y-axis
-  # if (input$show_labels_y == FALSE)
-  # p <- p + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  if (input$show_labels_y == FALSE)
+  p <- p + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
   
 
   

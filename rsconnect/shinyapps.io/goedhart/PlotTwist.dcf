@@ -1,0 +1,13 @@
+name: PlotTwist
+title: PlotTwist
+username:
+account: goedhart
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1024501
+bundleId: 2342392
+url: https://goedhart.shinyapps.io/PlotTwist/
+when: 1566413545.48473
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .Rapp.history|df-tidy-time-2-conditions.csv|Fig3_Cdc42_S1P.csv|Fig3_Rac_S1P.csv|Fig3_Rho_S1P.csv|Fig7_RhoA_S1P-control.csv|Fig7_RhoA_S1P-RGS.csv|mTurquoise2_SYFP2_spectra.csv|PlotTwist_normalized_tidy.csv|README.html|README.md|Spectra_example1.png|Test-data_Sergei.csv|Timeseries_example1.png|Timeseries_example2.png|Timeseries_heatmap.png|ToDo.rtf|www/.DS_Store
