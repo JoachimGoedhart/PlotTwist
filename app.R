@@ -28,6 +28,7 @@
 # Optimize facetting of heatmap (complicated, especially in combination with annotation)
 # Improve annotation of small multiples (especially text)
 # Add option to invert colors of heatmap?
+# Add labels to the objects in the line-plot
 # look into Partitioning Around Medoids -> pam{cluster}
 # look into Matrix Profile for clustering (tsmp)
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
@@ -44,6 +45,7 @@ library(magrittr)
 library(readxl)
 library(DT)
 library(dtw)
+library(ggrepel)
 #library(TSclust)
 #library(tsmp)
 
@@ -60,12 +62,15 @@ Confidence_level = Confidence_Percentage/100
 #From Paul Tol: https://personal.sron.nl/~pault/
 #Code to generate vectors in R to use these palettes
 
+#From Paul Tol: https://personal.sron.nl/~pault/
 Tol_bright <- c('#EE6677', '#228833', '#4477AA', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB')
-Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#332288', '#DDDDDD')
+
+Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#332288', '#DDCC77', '#999933','#CC6677', '#882255', '#AA4499', '#DDDDDD')
+
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
 
 #From Color Universal Design (CUD): https://jfly.uni-koeln.de/color/
-cud <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
+Okabe_Ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
 
 
 #Read a text file with demo data (comma separated values)
@@ -133,13 +138,14 @@ ui <- fluidPage(
                             #                  selectInput("colour_list", "Colour:", choices = ""),
                             conditionalPanel(condition = "input.color_data == true || input.color_stats == true",
                                              radioButtons("adjustcolors", "Color palette:", choices = 
-                                                            list("Standard" = 1,
-                                                                 "Colorblind safe (bright)" = 2,
-                                                                 "Colorblind safe (muted)" = 3,
-                                                                 "Colorblind safe (light)" = 4,
-                                                                 "cud" = 6,
+                                                            list(
+                                                                 #"Standard" = 1,
+                                                                 "Okabe&Ito; CUD" = 6,
+                                                                 "Tol; bright" = 2,
+                                                                 "Tol; muted" = 3,
+                                                                 "Tol; light" = 4,
                                                                  "User defined"=5),
-                                                          selected =  1),
+                                                                  selected =  6),
                                              conditionalPanel(condition = "input.adjustcolors == 5",
                                                               textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen")), 
                                              
@@ -155,8 +161,7 @@ ui <- fluidPage(
                             radioButtons(inputId = "ordered",
                                          label= "Order of the lines:",
                                          choices = list("Alphabetical" = "none", "By maximum value" = "max_int", "By amplitude" = "amplitude", "By integrated response" = "int_int", "From hierarchical clustering" = "hc"),
-                                         selected = "none"),
-                            checkboxInput("show_labels_y", "Show object labels (y-axis)", value=FALSE)
+                                         selected = "none")
                   ),
                             
  
@@ -213,6 +218,7 @@ ui <- fluidPage(
                    conditionalPanel(
                      condition = "input.tidyInput==false", selectInput("data_remove", "Deselect these columns:", "", multiple = TRUE)),
                    
+                   
                     conditionalPanel(condition = "input.tidyInput==true",
             
                       selectInput("x_var", "Select variable for x-axis", choices = ""),
@@ -224,6 +230,9 @@ ui <- fluidPage(
                       
 
                     ),
+                    downloadButton("downloadData", "Download (tidy) data (csv)"),
+                    hr(),
+
                    h4("Normalization"),
                    checkboxInput(inputId = "normalization",
                                  label = "Data normalization",
@@ -247,7 +256,7 @@ ui <- fluidPage(
                         textInput("base_range", "Define baseline by rownumbers (start,end)", value = "1,5"))
                         ),
                    conditionalPanel(
-                     condition = "input.normalization==true", (downloadButton("downloadData", "Download normalized tidy data (csv)"))),
+                     condition = "input.normalization==true", (downloadButton("downloadNormalizedData", "Download normalized tidy data (csv)"))),
                    
                    hr(),
                    checkboxInput(inputId = "info_data",
@@ -337,7 +346,7 @@ ui <- fluidPage(
                    
 
                    checkboxInput(inputId = "indicate_stim",
-                                 label = "Indicate Baseline/Stimulus",
+                                 label = "Add treatment/condition",
                                  value = FALSE),
                    
                    conditionalPanel(
@@ -364,7 +373,7 @@ ui <- fluidPage(
                    ),
                    
                    checkboxInput(inputId = "label_axes",
-                                 label = "Change labels",
+                                 label = "Change axis labels",
                                  value = FALSE),
                    conditionalPanel(
                      condition = "input.label_axes == true",
@@ -381,7 +390,7 @@ ui <- fluidPage(
                      numericInput("fnt_sz_title", "Plot title:", value = 24),
                      numericInput("fnt_sz_labs", "Axis titles:", value = 24),
                      numericInput("fnt_sz_ax", "Axis labels:", value = 18),
-                     numericInput("fnt_sz_stim", "Condition labels:", value = 8)
+                     numericInput("fnt_sz_stim", "Treatment/condition labels:", value = 8)
                      
                    ),
                    conditionalPanel(
@@ -392,9 +401,12 @@ ui <- fluidPage(
                    
                    
                    conditionalPanel(
-                     condition = "input.add_legend == true && input.data_form!='dataaspixel'",
+                     condition = "input.add_legend == true",
+ #                    condition = "input.add_legend == true && input.data_form!='dataaspixel'",
                      textInput("legend_title", "Legend title:", value = "")
                    ),
+                   checkboxInput("show_labels_y", "Add labels to objects", value=FALSE),
+                   
                    
                    NULL
   ),
@@ -934,7 +946,13 @@ df_selected <- reactive({
 #    koos <- df_upload_tidy() %>% filter(!is.na(Value))
     koos <- df_upload_tidy()
     
-    koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
+    
+    if (koos$id !="1") {
+      koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
+    } else if (koos$id=="1") {
+      #No need to generate a new id when only one condition is present
+      koos <- unite(koos, unique_id, c(NULL, Sample), sep="", remove = FALSE)
+    }
   }
   observe({ print(head(koos)) })
   return(koos)
@@ -1279,9 +1297,44 @@ output$downloadClusteringPNG <- downloadHandler(
         
 plot_data <- reactive({
 
-    #Define how colors are used
-    klaas <- df_binned()
+    #Get the data
+    klaas <- df_binned() 
     koos <- df_summary_mean()
+    
+    ############## Adjust X-scaling if necessary ##########
+    
+    #Adjust scale if range for x (min,max) is specified
+    if (input$range_x != "" &&  input$change_scale == TRUE) {
+      rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
+      observe({ print(rng_x) })
+      
+      
+      #If min>max invert the axis
+      if (rng_x[1]>rng_x[2]) {
+        p <- p+ scale_x_reverse()
+        klaas <-  klaas %>% filter(Time >= rng_x[2] & Time <= rng_x[1] )
+        koos <-  koos %>% filter(Time >= rng_x[2] & Time <= rng_x[1] )
+      } else {
+        #Select timepoints within the set limits
+        klaas <-  klaas %>% filter(Time >= rng_x[1] & Time <= rng_x[2] )
+        koos <-  koos %>% filter(Time >= rng_x[1] & Time <= rng_x[2] )
+      }
+      
+      #Autoscale if rangeis NOT specified
+    } else if (input$range_x == "" ||  input$change_scale == FALSE) {
+      rng_x <- c(min(klaas$Time), max(klaas$Time))
+      #     observe({ print(rng_x) })
+    }
+    
+    
+    #Increase rng_x[2] if labels are added
+    if (input$show_labels_y == TRUE) {
+      rng_x[2] <- (rng_x[2]-rng_x[1])*.15+rng_x[2]
+    }
+    
+    
+    
+    #Define how colors are used
     klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
     koos <- koos %>% mutate(id = as.factor(id))
     
@@ -1312,7 +1365,7 @@ plot_data <- reactive({
     } else if (input$adjustcolors == 4) {
       newColors <- Tol_light
     } else if (input$adjustcolors == 6) {
-      newColors <- cud
+      newColors <- Okabe_Ito
     } else if (input$adjustcolors == 5) {
       newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
     }
@@ -1365,22 +1418,10 @@ plot_data <- reactive({
     # This needs to go here (before annotations)
     p <- p+ theme_light(base_size = 16)
     
-    ############## Adjust scale if necessary ##########
+
+    ############## Adjust Y-scaling if necessary ##########
     
-    #Adjust scale if range for x (min,max) is specified
-    if (input$range_x != "" &&  input$change_scale == TRUE) {
-      rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
-      observe({ print(rng_x) })
-      #If min>max invert the axis
-        if (rng_x[1]>rng_x[2]) {p <- p+ scale_x_reverse()}
-
-      #Autoscale if rangeis NOT specified
-    } else if (input$range_x == "" ||  input$change_scale == FALSE) {
-      rng_x <- c(NULL,NULL)
- #     observe({ print(rng_x) })
-    }
-
-
+    
     #Adjust scale if range for y (min,max) is specified
     if (input$range_y != "" &&  input$change_scale == TRUE) {
       rng_y <- as.numeric(strsplit(input$range_y,",")[[1]])
@@ -1421,6 +1462,7 @@ plot_data <- reactive({
     } else if (input$indicate_stim == TRUE && input$stim_colors =="") {
       stimColors <- "black"
     }
+    
       
   
     # if a stimulus is applied
@@ -1498,6 +1540,94 @@ plot_data <- reactive({
     }
     
 
+    
+    ################################ Add labels to end of line ####################
+    # For traces in case of one conditions
+    # For stats in case of multiple
+    
+    
+    
+
+    
+    #Generate a dataframe with the labels
+    if (input$show_labels_y == TRUE) {
+            
+            # If summary is selected, label mean trace
+            if (input$summaryInput == TRUE) {
+              df_label <- koos %>% group_by(id) %>% filter(Time==last(Time))
+              
+     #         %>% mutate(Value=mean, unique_id=id) 
+            
+            #If  summary is not selected, label all traces  
+            } else if (input$summaryInput == FALSE) {
+              df_label <- klaas %>% filter(Time==last(Time))
+            }
+            
+            if (input$summaryInput == FALSE && input$color_data == FALSE) {
+              p <- p + geom_label_repel(data = df_label, aes_string(label='unique_id', x='Time', y='Value'),
+                                        fill = 'black',
+                                        fontface = 'bold', color = 'white', size=6,
+                                        nudge_x      = 20,
+                                        direction    = "y",
+                                        hjust        = 0,
+                                        point.padding = unit(1, 'lines'),
+                                        segment.color = 'grey50',
+                                        segment.size = 0.5)
+              
+
+            } else  if (input$summaryInput== FALSE && input$color_data == TRUE) {
+                #  for multiple conditions fill = id, but for a single condition use fill='unique_id'
+                p <- p + geom_label_repel(data = df_label, aes_string(label='unique_id', x='Time', y='Value', fill=kleur_data),
+
+                                          
+                                          
+                                          fontface = 'bold', color = 'white', size=6,
+                                          nudge_x      = 20,
+                                          direction    = "y",
+                                          hjust        = 0,
+                                          point.padding = unit(1, 'lines'),
+                                          segment.color = 'grey50',
+                                          segment.size = 0.5)
+                                          
+                
+            } else  if (input$summaryInput== TRUE && input$color_stats == FALSE) {
+
+              p <- p + geom_label_repel(data = df_label, aes_string(label='id', x='Time', y='mean'),
+                                        fill = 'black',
+                                        fontface = 'bold', color = 'white', size=6,
+                                        nudge_x      = 20,
+                                        direction    = "y",
+                                        hjust        = 0,
+                                        point.padding = unit(1, 'lines'),
+                                        segment.color = 'grey50',
+                                        segment.size = 0.5)
+              
+              
+              
+            } else  if (input$summaryInput== TRUE && input$color_stats == TRUE) {
+              
+              p <- p + geom_label_repel(data = df_label, aes_string(label='id', x='Time', y='mean', fill='id'),
+                                        
+                                        fontface = 'bold', color = 'white', size=6,
+                                        nudge_x      = 20,
+                                        direction    = "y",
+                                        hjust        = 0,
+                                        point.padding = unit(1, 'lines'),
+                                        segment.color = 'grey50',
+                                        segment.size = 0.5)
+              
+            }
+                  
+    
+  
+ #     observe({print(df_label)})
+
+
+      }
+
+    
+    
+    
     
     if (input$add_legend == TRUE) {
       
@@ -1747,6 +1877,11 @@ plot_map <- reactive({
     p <- p + theme(legend.position="none")
   }
   
+  if (input$add_legend == TRUE) {
+    
+    p <- p + labs(color = input$legend_title, fill=input$legend_title)
+  }
+  
   #remove gridlines
   p <- p+ theme(panel.border = element_blank(),
                 panel.grid.major = element_blank(),
@@ -1860,7 +1995,7 @@ plot_contribs <- reactive({
   } else if (input$adjustcolors == 4) {
     newColors <- Tol_light
   } else if (input$adjustcolors == 6) {
-    newColors <- cud
+    newColors <- Okabe_Ito
   } else if (input$adjustcolors == 5) {
     newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
   }
@@ -1935,9 +2070,9 @@ plot_contribs <- reactive({
   })
 
 
-############## Export the data in tidy format ###########
+############## Export Normalized data in tidy format ###########
 
-output$downloadData <- downloadHandler(
+output$downloadNormalizedData <- downloadHandler(
   
   filename = function() {
     paste("PlotTwist_tidy_normalized", ".csv", sep = "")
@@ -1946,6 +2081,21 @@ output$downloadData <- downloadHandler(
     write.csv(df_normalized(), file, row.names = FALSE)
   }
 )
+
+
+############## Export data in tidy format ###########
+
+output$downloadData <- downloadHandler(
+  
+  filename = function() {
+    paste("PlotTwist_tidy", ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(df_selected(), file, row.names = FALSE)
+  }
+)
+
+
 
 ############## Export the clustered data in tidy format ###########
 
