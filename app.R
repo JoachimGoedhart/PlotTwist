@@ -745,7 +745,7 @@ observe({
     updateCheckboxInput(session, "no_grid", value = (presets_layout[2]))
     
     updateCheckboxInput(session, "change_scale", value = presets_layout[3])
-
+    updateTextInput(session, "range_x", value= presets_layout[4])
     updateTextInput(session, "range_y", value= presets_layout[5])
     updateCheckboxInput(session, "color_data", value = presets_layout[6])
     updateCheckboxInput(session, "color_stats", value = presets_layout[7])
@@ -857,7 +857,7 @@ url <- reactive({
   data <- c(input$data_input, input$tidyInput, input$normalization, input$norm_type, input$base_range, "")
   
   vis <- c(input$data_form, input$alphaInput, input$summaryInput, input$add_CI, input$alphaInput_summ, input$multiples, input$thicken)
-  layout <- c(" ", input$no_grid, input$change_scale, " ", input$range_y, input$color_data, input$color_stats,
+  layout <- c(" ", input$no_grid, input$change_scale, input$range_x, input$range_y, input$color_data, input$color_stats,
               input$adjustcolors, "X", input$plot_height, input$plot_width)
   
   #Hide the standard list of colors if it is'nt used
