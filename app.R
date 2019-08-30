@@ -59,7 +59,6 @@ Confidence_Percentage = 95
 Confidence_level = Confidence_Percentage/100
 
 #Several qualitative color palettes that are colorblind friendly
-#From Paul Tol: https://personal.sron.nl/~pault/
 #Code to generate vectors in R to use these palettes
 
 #From Paul Tol: https://personal.sron.nl/~pault/
@@ -730,8 +729,9 @@ observe({
     updateRadioButtons(session, "summaryInput", selected = presets_vis[3])
     updateCheckboxInput(session, "add_CI", value = presets_vis[4])
     updateSliderInput(session, "alphaInput_summ", value = presets_vis[5])
-#    updateRadioButtons(session, "ordered", selected = presets_vis[6])
-    #  updateTabsetPanel(session, "tabs", selected = "Plot")
+    updateCheckboxInput(session, "multiples", value = presets_vis[6])
+    updateCheckboxInput(session, "thicken", value = presets_vis[7])
+
   }
   
   ############ ?layout ################
@@ -793,6 +793,7 @@ observe({
     updateNumericInput(session, "fnt_sz_stim", value= presets_label[10])
     updateCheckboxInput(session, "add_legend", value = presets_label[11])    
     updateTextInput(session, "legend_title", value= presets_label[12])
+    updateCheckboxInput(session, "show_labels_y", value = presets_label[13])
     
     #    updateCheckboxInput(session, "add_description", value = presets_label[9])
   }
@@ -855,7 +856,7 @@ url <- reactive({
   
   data <- c(input$data_input, input$tidyInput, input$normalization, input$norm_type, input$base_range, "")
   
-  vis <- c(input$data_form, input$alphaInput, input$summaryInput, input$add_CI, input$alphaInput_summ, "")
+  vis <- c(input$data_form, input$alphaInput, input$summaryInput, input$add_CI, input$alphaInput_summ, input$multiples, input$thicken)
   layout <- c(" ", input$no_grid, input$change_scale, " ", input$range_y, input$color_data, input$color_stats,
               input$adjustcolors, "X", input$plot_height, input$plot_width)
   
@@ -866,7 +867,7 @@ url <- reactive({
     color <- c(input$colour_list, input$user_color_list)
   }
   
-  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_title, input$fnt_sz_labs, input$fnt_sz_ax, input$fnt_sz_stim, input$add_legend, input$legend_title)
+  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_title, input$fnt_sz_labs, input$fnt_sz_ax, input$fnt_sz_stim, input$add_legend, input$legend_title, input$show_labels_y)
   stim <- c(input$indicate_stim, input$stim_shape, input$stim_range, input$stim_text, input$stim_colors)
 
   #replace FALSE by "" and convert to string with ; as seperator
@@ -1223,7 +1224,7 @@ output$downloadPlotPDF <- downloadHandler(
     paste("PlotTwist_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
-    pdf(file, width = input$myWidth/72, height = input$myHeight/72)
+    pdf(file, width = input$plot_width/72, height = input$plot_height/72)
     if (input$data_form != "dataaspixel") plot(plot_data())
     else plot(plot_map())
     dev.off()

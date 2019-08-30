@@ -15,3 +15,5 @@
 .Rhistory
 *.rtf
 README.html
+.Rhistory
+rsconnect/shinyapps.io/goedhart/PlotTwist.dcf
