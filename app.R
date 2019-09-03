@@ -1328,8 +1328,8 @@ plot_data <- reactive({
     }
     
     
-    #Increase rng_x[2] if labels are added
-    if (input$show_labels_y == TRUE) {
+    #Increase rng_x[2] if labels are added BUT NOT for small multiple
+    if (input$show_labels_y == TRUE && input$multiples == FALSE) {
       rng_x[2] <- (rng_x[2]-rng_x[1])*.15+rng_x[2]
     }
     
@@ -1542,7 +1542,7 @@ plot_data <- reactive({
     
 
     
-    ################################ Add labels to end of line ####################
+    ################################ Add labels  ####################
     # For traces in case of one conditions
     # For stats in case of multiple
     
@@ -1551,7 +1551,7 @@ plot_data <- reactive({
 
     
     #Generate a dataframe with the labels
-    if (input$show_labels_y == TRUE) {
+    if (input$show_labels_y == TRUE && input$multiples == FALSE) {
             
             # If summary is selected, label mean trace
             if (input$summaryInput == TRUE) {
@@ -1627,7 +1627,56 @@ plot_data <- reactive({
       }
 
     
+     #########
+    #########3
+    #######
     
+    if (input$show_labels_y == TRUE && input$multiples == TRUE) {
+    #Show labels in upper right corner
+      
+      
+      if(number_of_conditions == 1) {
+
+        #show unique_id in upper right corner
+        df_label <- klaas %>% filter(Time==last(Time))
+      } else if (number_of_conditions > 1) {
+
+        #show id in upper right corner
+        df_label <- koos %>% group_by(id) %>% filter(Time==last(Time)) %>% mutate(unique_id=id)
+      }
+      
+      if (number_of_conditions == 1 && input$color_data == FALSE) {
+
+        p <- p + geom_label(data = df_label, aes(label=unique_id,x=Inf,y=Inf),
+                                  fill = 'black',
+                                  fontface = 'bold', color = 'white', size=5,
+                                  vjust = 1,
+                                  hjust = 1)
+       
+        
+      } else if (number_of_conditions == 1 && input$color_data == TRUE) {
+        p <- p + geom_label(data = df_label, aes(label=unique_id,x=Inf,y=Inf, fill=unique_id),
+                            fontface = 'bold', color = 'white', size=5,
+                            vjust = 1,
+                            hjust = 1)
+        
+      } else  if (number_of_conditions > 1 && input$color_data == FALSE) {
+        
+        p <- p + geom_label_repel(data = df_label, aes_string(label='id', x=Inf, y=Inf),
+                             fill = 'black',
+                             fontface = 'bold', color = 'white', size=8,
+                             vjust = 1,
+                             hjust = 1)
+        
+      } else  if (number_of_conditions > 1 && input$color_data == TRUE) {
+        
+        p <- p + geom_label_repel(data = df_label, aes_string(label='id', x=Inf, y=Inf, fill='id'),
+                             fontface = 'bold', color = 'white', size=8,
+                             vjust = 1,
+                             hjust = 1)
+        
+      }
+    }
     
     
     if (input$add_legend == TRUE) {
@@ -1656,6 +1705,12 @@ plot_data <- reactive({
                     p <- p+ facet_grid(id~.)
       }
                     
+    }
+    
+    # Hide the facet 'strips' when object are labeled
+    if (input$show_labels_y == TRUE && number_of_conditions > 1) {
+      p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.5, "lines"),panel.spacing.x = unit(.5, "lines"))
+      
     }
 
     #Remove upper and right axis
