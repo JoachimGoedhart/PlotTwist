@@ -24,10 +24,10 @@ The web-tool runs from a shiny server, and can be accessed at: [https://huygens.
 Alternatively, the app can run from R/Rstudio.
 
 #### Preparations
-Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl, magrittr, DT, dtw). 
+Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, readxl, magrittr, ggrepel, DT, dtw). 
 Run this command in R/Rstudio to download and install all the packages (only needs to be done once):
 ```
-install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "DT", "dtw")
+install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "ggrepel", "DT", "dtw")
 ```
 o The first option is running it directly from Github. In the command line (in R or Rstudio) type:
 ```
