@@ -114,9 +114,15 @@ ui <- fluidPage(
                                  value = FALSE),
                    conditionalPanel(
                      condition = "input.change_scale == true",
+
+                     checkboxInput(inputId = "scale_log_10",
+                                                    label = "Log scale",
+                                                    value = FALSE),
+                     
                      textInput("range_x", "Range x-axis (min,max)", value = "")
                      
                    ),
+                   
                    conditionalPanel(
                      condition = "input.change_scale == true && input.data_form !='dataaspixel'",
                      textInput("range_y", "Range y-axis (min,max)", value = "")
@@ -1678,11 +1684,14 @@ plot_data <- reactive({
       }
     }
     
-    
+    #Add legend if specified
     if (input$add_legend == TRUE) {
-      
        p <- p + labs(color = input$legend_title, fill=input$legend_title)
     }
+    
+    # if log-scale checked specified
+    if (input$scale_log_10)
+      p <- p + scale_y_log10() 
     
     
     #remove gridlines (if selected)
