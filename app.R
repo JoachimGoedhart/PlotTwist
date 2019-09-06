@@ -26,9 +26,7 @@
 # ToDo
 # Print variables on the axis from the tidy column names
 # Optimize facetting of heatmap (complicated, especially in combination with annotation)
-# Improve annotation of small multiples (especially text)
 # Add option to invert colors of heatmap?
-# Add labels to the objects in the line-plot
 # look into Partitioning Around Medoids -> pam{cluster}
 # look into Matrix Profile for clustering (tsmp)
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
@@ -144,11 +142,12 @@ ui <- fluidPage(
                             conditionalPanel(condition = "input.color_data == true || input.color_stats == true",
                                              radioButtons("adjustcolors", "Color palette:", choices = 
                                                             list(
-                                                                 #"Standard" = 1,
+                                                                #"Standard" = 1,
                                                                  "Okabe&Ito; CUD" = 6,
                                                                  "Tol; bright" = 2,
                                                                  "Tol; muted" = 3,
                                                                  "Tol; light" = 4,
+                                                                 "Viridis" = 7,
                                                                  "User defined"=5),
                                                                   selected =  6),
                                              conditionalPanel(condition = "input.adjustcolors == 5",
@@ -1700,9 +1699,12 @@ plot_data <- reactive({
                     panel.grid.minor = element_blank())
     }
 
-    if (input$adjustcolors >1) {
+    if (input$adjustcolors >1 && input$adjustcolors < 7) {
      p <- p+ scale_color_manual(values=newColors)
      p <- p+ scale_fill_manual(values=newColors)
+    } else if (input$adjustcolors ==7) {
+      p <- p+ scale_colour_viridis_d()
+      p <- p+ scale_fill_viridis_d()      
     }
     
     if (input$multiples == TRUE) {
