@@ -1,5 +1,5 @@
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# PlotTwist: Shiny app for plotting and comparing time-dependent data
+# PlotTwist: Shiny app for plotting and comparing continuous data, with a focus on time-dependent data
 # Created by Joachim Goedhart (@joachimgoedhart), first version 2018
 # Takes non-tidy, spreadsheet type data as input assuming first column is "Time"
 # Non-tidy data is converted into tidy format
@@ -28,6 +28,7 @@
 # Optimize facetting of heatmap (complicated, especially in combination with annotation)
 # Add option to invert colors of heatmap?
 # look into Partitioning Around Medoids -> pam{cluster}
+# look into fuzzy clustering
 # look into Matrix Profile for clustering (tsmp)
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
@@ -44,6 +45,10 @@ library(readxl)
 library(DT)
 library(dtw)
 library(ggrepel)
+
+#library(fpc)
+library(NbClust)
+
 #library(TSclust)
 #library(tsmp)
 
@@ -80,7 +85,7 @@ vals <- reactiveValues(count=0)
 ###### UI: User interface #########
 
 ui <- fluidPage(
-  titlePanel("PlotTwist - Plotting Data from Time series"),
+  titlePanel("PlotTwist - a web app for plotting continuous data"),
   sidebarLayout(
     sidebarPanel(width=3,
                  conditionalPanel(
@@ -113,9 +118,6 @@ ui <- fluidPage(
                    conditionalPanel(
                      condition = "input.change_scale == true",
 
-                     checkboxInput(inputId = "scale_log_10",
-                                                    label = "Log scale",
-                                                    value = FALSE),
                      
                      textInput("range_x", "Range x-axis (min,max)", value = "")
                      
@@ -123,7 +125,11 @@ ui <- fluidPage(
                    
                    conditionalPanel(
                      condition = "input.change_scale == true && input.data_form !='dataaspixel'",
-                     textInput("range_y", "Range y-axis (min,max)", value = "")
+                     textInput("range_y", "Range y-axis (min,max)", value = ""),
+                     checkboxInput(inputId = "scale_log_10",
+                                   label = "Log scale",
+                                   value = FALSE)
+                     
                      
                    ),
                    conditionalPanel(
@@ -285,8 +291,7 @@ ui <- fluidPage(
                   radioButtons(inputId = "method",
                                label= "Clustering method:",
                                choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan", "k-means" = "kmeans"),
- #                              choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan", "k-means" = "kmeans", "Matrix Profile" = "mp"),
-                                selected = "euclidean"),
+                              selected = "euclidean"),
 
                   conditionalPanel(
                     condition = "input.method != 'kmeans'",
@@ -302,6 +307,26 @@ ui <- fluidPage(
                                 value = FALSE),
                   
                   numericInput ("groups", "Number of clusters/groups:", value=2, min = 1, max = 100, step = 1),
+                  
+                  checkboxInput(inputId = "validate_clusters",
+                                label = "Verify clustering",
+                                value = FALSE),
+                  
+
+                            conditionalPanel(
+                              condition = "input.validate_clusters==true",
+                            
+                            radioButtons(inputId = "cvi",
+                                         label= "Cluster Validation Index (higher is better)",
+                                         choices = list("Calinski Harabasz index" = "ch", "Dunn's index" ="dunn", "Silhouette index"="silhouette"),
+                                         selected = "ch"),
+                              # h5(" Verify # of clusters:"),
+                            tableOutput("cvi")
+                          
+                  ),
+
+                   
+                  hr(),
                   sliderInput("limits", "Set lower and upper limit of x-axis", 0, 120, value=c(1,100)),                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
 
@@ -333,6 +358,7 @@ ui <- fluidPage(
   
                     numericInput("clusterplot_height", "Height (# pixels): ", value = 350),
                     numericInput("clusterplot_width", "Width (# pixels):", value = 600),
+
   
                   
 
@@ -420,7 +446,7 @@ ui <- fluidPage(
                    #Session counter: https://gist.github.com/trestletech/9926129
                    h4("About"),  "There are currently", 
                    verbatimTextOutput("count"),
-                   "session(s) connected to this app." 
+                   "session(s) connected to this app."
                    
                  ),
                  
@@ -433,7 +459,10 @@ ui <- fluidPage(
       
       tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
-                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), 
+                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"),
+                           downloadButton("downloadPlotEPS", "Download eps-file"),
+                           downloadButton("downloadPlotSVG", "Download svg-file"),
+                           downloadButton("downloadPlotPNG", "Download png-file"), 
                            
                            actionButton("settings_copy", icon = icon("clone"),
                                         label = "Clone current setting"),
@@ -572,6 +601,16 @@ df_upload <- reactive({
   #Show the columns that can be removed
   updateSelectInput(session, "data_remove", choices = columns_to_remove)
   
+
+  #ImageJ specific: seperate the column "Label" in multiple columns
+  if("Label" %in% colnames(data)) {
+    data <- data %>% separate(Label,c("filename", "Sample","Number"),sep=':')
+  }
+  
+  #Replace space and dot of header names by underscore
+  data <- data %>%  
+    select_all(~gsub("\\s+|\\.", "_", .))
+  
     return(data)
 })
 
@@ -670,7 +709,7 @@ observeEvent(input$x_var != 'none' && input$y_var != 'none' && input$filter_colu
         koos <- df_upload_tidy() %>% select(for_filtering = !!filter_column)
         
         conditions_list <- levels(factor(koos$for_filtering))
-        observe(print((conditions_list)))
+       # observe(print((conditions_list)))
         updateSelectInput(session, "remove_these_conditions", choices = conditions_list)
     }
   
@@ -1082,18 +1121,22 @@ ordered_list <- reactive({
   
   if(input$ordered == "max_int") {
     reordered_list <- reorder(klaas$unique_id, klaas$Value, max, na.rm = TRUE)
+    ordered_list <- levels(reordered_list)
     
   } else if (input$ordered == "none") {
     reordered_list <- factor(klaas$unique_id, levels=unique(klaas$unique_id))
+    ordered_list <- levels(reordered_list)
     
   } else if (input$ordered == "int_int") {
     reordered_list <- reorder(klaas$unique_id, klaas$Value, sum, na.rm = TRUE)
+    ordered_list <- levels(reordered_list)
     
   }  else if (input$ordered == "amplitude") {
 
     #Determine a ranking based on amplitude = max-min
     df_rank <- klaas %>% group_by(unique_id) %>% summarise(amplitude=max(Value)-min(Value)) %>% mutate(rank=percent_rank(amplitude))
     reordered_list <- reorder(df_rank$unique_id, df_rank$rank)
+    ordered_list <- levels(reordered_list)
     
   } else if (input$ordered == "hc") {
     #Convert to wide format
@@ -1108,13 +1151,11 @@ ordered_list <- reactive({
     df_clustered <- df_wide[, col.order]
     
     #Get the ordered column names from the clustered dataframe
-    reordered_list <- colnames(df_clustered)
-#    observe({ print(reordered_list) })
+    ordered_list <- colnames(df_clustered)
   }
   
 
-  ordered_list <- levels(reordered_list)
-  observe({ print(ordered_list) })
+#  observe({ print(ordered_list) })
   
   return(ordered_list)
   
@@ -1122,6 +1163,7 @@ ordered_list <- reactive({
 
 
 ################ Clustering ###########
+# See also: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
 df_grouped <- reactive({
   
@@ -1141,50 +1183,19 @@ df_grouped <- reactive({
   df_wide <- klaas %>% select(unique_id, Value,Time)  %>% spread(key=unique_id, value=Value)
   #Remove Time info
   df_wide_minus_t <- df_wide %>% select(-Time)
-
+  df_wide_trans <- t(df_wide_minus_t)
 
   
   if (input$method == "kmeans") {
-    km <- kmeans(t(df_wide_minus_t), centers = input$groups)
+    km <- kmeans(df_wide_trans, centers = input$groups)
     Cluster <- km$cluster
     df_group <- as.data.frame(Cluster) 
-    df_group$unique_id <- rownames(df_group)
-  } else if (input$method == "mp") {
-    tdat <- t(df_wide_minus_t)
-    
-    ### Matrix Pofile distance matrix #####
-
-    D <- data.frame(row.names = rownames(tdat))
-#    observe({print(head(D))})
-    nobs <-  nrow(tdat)
-    window <- floor(ncol(tdat)/20)
-    if (window < 4) {window <- 4}
-
-    for (i in 1:nobs) {
-      for (j in 1:nobs){
-        D[i,j]=mpdist(tdat[i,],tdat[j,],window)
-      }
-    }
-#    observe({print(head(D))})
-    
-    dst <- as.dist(D)
-
-    #Perform cluster analysis on the data
-    hc <- hclust(dst, method = input$linkage)
-    
-    #Define clusters from a cut-off k
-    Cluster <- cutree(hc, k = input$groups)
-
-    
-    df_group <- as.data.frame(Cluster)
-
     df_group$unique_id <- rownames(df_group)
     
   } else {
     
-  
     #Calculate the distance matrix
-    dst <- dist(t(df_wide_minus_t), method = input$method)
+    dst <- dist(df_wide_trans, method = input$method)
   
       
     #Perform cluster analysis on the data
@@ -1197,15 +1208,59 @@ df_grouped <- reactive({
   
     df_group$unique_id <- rownames(df_group)
   }  
-  
 
   #Add group number
   klaas <- klaas %>% left_join(df_group, by="unique_id")
 
-  
   return(klaas)
   
 })
+
+
+################### Calculate several Cluster Validation Indices for up to 12 clusters ##########
+df_cvi <- reactive({
+
+  klaas <-  df_binned() %>% drop_na()
+  
+  #Read limits of x-axis
+  min_Time <- input$limits[1]
+  max_Time <- input$limits[2]
+  
+  #Select timepoints within the set limits
+  
+  klaas <-  klaas %>% filter(Time >= min_Time & Time <= max_Time )
+  
+  #Convert to wide format
+  df_wide <- klaas %>% select(unique_id, Value,Time)  %>% spread(key=unique_id, value=Value)
+  #Remove Time info
+  df_wide_minus_t <- df_wide %>% select(-Time)
+
+  df_wide_trans <- t(df_wide_minus_t)
+  
+  #Max number of clusters to examine
+  n_max <- floor(ncol(df_wide_minus_t)/6)
+  
+  if(n_max<2){return(data.frame(Note="At least n=12 is needed for cluster validation"))}
+
+  k_max=12
+  if (n_max < k_max) {k_max <- n_max}
+  
+  if (input$method == "kmeans") {
+    res<-NbClust(df_wide_trans, diss=dist(df_wide_trans), distance = NULL, min.nc=2, max.nc=k_max, method = "kmeans", index = input$cvi)
+
+  } else {
+
+    #Calculate the distance matrix    
+    dst <- dist(df_wide_trans, method = input$method)
+    res<-NbClust(df_wide_trans, diss=dst, distance = NULL, min.nc=2, max.nc=k_max, method = input$linkage, index = input$cvi)
+  }
+  
+  df_res <- data.frame("Clusters"=2:k_max, "Index"=res$All.index)
+
+  return(df_res)
+  
+  })
+
 
 #### Caluclate Summary of the DATA for the MEAN ####
 
@@ -1237,6 +1292,32 @@ output$downloadPlotPDF <- downloadHandler(
   contentType = "application/pdf" # MIME type of the image
 )
 
+output$downloadPlotSVG <- downloadHandler(
+  filename <- function() {
+    paste("PlotTwist_", Sys.time(), ".svg", sep = "")
+  },
+  content <- function(file) {
+    svg(file, width = input$plot_width/72, height = input$plot_height/72)
+    if (input$data_form != "dataaspixel") plot(plot_data())
+    else plot(plot_map())
+    dev.off()
+  },
+  contentType = "application/svg" # MIME type of the image
+)
+
+output$downloadPlotEPS <- downloadHandler(
+  filename <- function() {
+    paste("PlotTwist_", Sys.time(), ".eps", sep = "")
+  },
+  content <- function(file) {
+    cairo_ps(file, width = input$plot_width/72, height = input$plot_height/72)
+    if (input$data_form != "dataaspixel") plot(plot_data())
+    else plot(plot_map())
+    dev.off()
+  },
+  contentType = "application/eps" # MIME type of the image
+)
+
 output$downloadPlotPNG <- downloadHandler(
   filename <- function() {
     paste("PlotTwist", Sys.time(), ".png", sep = "")
@@ -1249,6 +1330,8 @@ output$downloadPlotPNG <- downloadHandler(
   },
   contentType = "application/png" # MIME type of the image
 )
+
+
 
 ######### DEFINE DOWNLOAD BUTTONS FOR CLUSTER RESULTS ###########
 
@@ -1644,6 +1727,7 @@ plot_data <- reactive({
 
         #show unique_id in upper right corner
         df_label <- klaas %>% filter(Time==last(Time))
+
       } else if (number_of_conditions > 1) {
 
         #show id in upper right corner
@@ -1746,16 +1830,46 @@ plot_clusters <- reactive({
   
   klaas <- df_grouped()
   
+  newColors <- NULL
+  
+  if (input$adjustcolors == 2) {
+    newColors <- Tol_bright
+  } else if (input$adjustcolors == 3) {
+    newColors <- Tol_muted
+  } else if (input$adjustcolors == 4) {
+    newColors <- Tol_light
+  } else if (input$adjustcolors == 6) {
+    newColors <- Okabe_Ito
+  } else if (input$adjustcolors == 5) {
+    newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
+  }
+  
+  max_colors <- nlevels(as.factor(klaas$unique_id))
+  if(length(newColors) < max_colors) {
+    newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
+  }
+  
+  
   #### Command to prepare the plot ####
   p <- ggplot(data=klaas, aes_string(x="Time", y="Value")) 
+  
+  p <- p+ scale_color_manual(values=newColors)
+  p <- p+ scale_fill_manual(values=newColors)
   
   #### plot individual measurements ####
   p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id"), alpha=input$alphaInput)
   
+  # Color curves by id
+  #p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color="id"), alpha=input$alphaInput)
+  
+    
   p <- p + stat_summary(fun.y=mean, aes(group=1), geom="line", colour="black", size=2,alpha=input$alphaInput_summ)
 
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
+  
+
+  
   
   ############## Adjust scale if necessary ##########
   
@@ -1803,15 +1917,43 @@ plot_clusters <- reactive({
                   panel.grid.minor = element_blank())
   }
   
-  p <- p+ facet_wrap(~Cluster, labeller = label_both)
+  #### Prepare a dataframe with labes to identify Clusters #######
+  number_of_clusters <- nlevels(as.factor(klaas$Cluster))
+  df_label <- data.frame(label=c(" Cluster "), Cluster=1:number_of_clusters, White=c(" ")) %>% unite(clust_label,c(label,Cluster,White), sep="", remove = FALSE)
+  
+#  observe({print((df_label))})
+  
+  if (input$show_proportions ==FALSE) {
+      p <- p + geom_label_repel(data = df_label, aes(label=clust_label,x=Inf,y=Inf),
+                                fill ='black',
+                                fontface = 'bold', color = 'white', size=7,
+                                vjust = 1,
+                                hjust = 1)
+  } else {
+      p <- p + geom_label_repel(data = df_label, aes(label=clust_label,x=Inf,y=Inf,fill=clust_label),
+                                fontface = 'bold', color = 'white', size=7,
+                                vjust = 1,
+                                hjust = 1)
+  }
+  
+  #Remove the strip above the individual panels
+  p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.5, "lines"),panel.spacing.x = unit(.5, "lines"))
+  
+  
+  p <- p+ facet_wrap(~Cluster)
   
   #Remove upper and right axis
-  
   p <- p + theme(panel.border = element_blank())
   p <- p + theme(axis.line.x  = element_line(colour = "black"), axis.line.y  = element_line(colour = "black"))
   # p <- p + theme(aspect.ratio=1)
   
   p <- p + coord_cartesian(ylim=c(rng_y[1],rng_y[2]))
+  
+  
+  
+
+  
+  
   
   return(p)
   
@@ -1878,10 +2020,15 @@ plot_map <- reactive({
   # 
   #   p <- p+ scale_fill_viridis_c(limits=c(min_y,max_y), direction = direct)
   # } 
-
-  p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]))
   
-  # This needs to go here (before annotations)
+  #Log scale on standard black-blue gradient
+  # p <- p+ scale_fill_gradient(limits=c(rng_y[1],rng_y[2]), trans = "log")
+
+  p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]), direction=1)
+
+ 
+
+     # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
   
   
@@ -2079,8 +2226,7 @@ plot_contribs <- reactive({
   klaas <- klaas %>% select(Cluster, id, unique_id) %>% distinct()
 
   klaas <- klaas %>% mutate(Cluster = factor(Cluster))
-  
-  
+
   #### Command to prepare the plot ####
   # p <- ggplot(data=klaas, aes_string(x="id", fill="Cluster"))
   
@@ -2176,6 +2322,12 @@ output$downloadClusteredData <- downloadHandler(
   }
 )
 
+
+########### Update CH index #########
+
+output$cvi <- renderTable({
+  df_cvi()
+})
 
     ########### Update Counter #########
     # Reactively update the client.
