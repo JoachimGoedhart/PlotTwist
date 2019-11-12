@@ -274,7 +274,7 @@ ui <- fluidPage(
                    
                    conditionalPanel(
                      condition = "input.info_data==true",
-                     img(src = 'Data_format_time.png', width = '100%'), h5(""), a("Information on converting wide data to the tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
+                     img(src = 'Data_format.png', width = '100%'), h5(""), a("Information on converting wide data to the tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
                    ),
                    NULL
                  ),
