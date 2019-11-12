@@ -29,9 +29,7 @@
 # Add option to invert colors of heatmap?
 # look into Partitioning Around Medoids -> pam{cluster}
 # look into fuzzy clustering
-# look into Matrix Profile for clustering (tsmp)
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
-
 
 #options(shiny.maxRequestSize=30*1024^2)
 
@@ -45,6 +43,7 @@ library(readxl)
 library(DT)
 library(dtw)
 library(ggrepel)
+library(shinycssloaders)
 
 #library(fpc)
 library(NbClust)
@@ -290,7 +289,7 @@ ui <- fluidPage(
                   
                   radioButtons(inputId = "method",
                                label= "Clustering method:",
-                               choices = list("Euclidean distance" = "euclidean", "Dynamic Time Warping" ="DTW", "Manhattan distance"="manhattan", "k-means" = "kmeans"),
+                               choices = list("Euclidean distance" = "euclidean", "Manhattan distance"="manhattan", "Dynamic Time Warping" ="DTW", "k-means" = "kmeans"),
                               selected = "euclidean"),
 
                   conditionalPanel(
@@ -298,8 +297,8 @@ ui <- fluidPage(
                   
                             radioButtons(inputId = "linkage",
                                          label= "Linkage method:",
-                                         choices = list("Complete" = "complete", "Centroid" ="centroid", "Ward.D2"="ward.D2"),
-                                         selected = "complete")
+                                         choices = list("Ward.D2"="ward.D2", "Centroid" ="centroid", "Average"="average", "Complete" = "complete"),
+                                         selected = "ward.D2")
                   ),
                   
                   checkboxInput(inputId = "show_proportions",
@@ -468,7 +467,7 @@ ui <- fluidPage(
                                         label = "Clone current setting"),
                            
                            
-                           div(`data-spy`="affix", `data-offset-top`="10", plotOutput("coolplot", height="100%")),
+                           div(`data-spy`="affix", `data-offset-top`="10", withSpinner(plotOutput("coolplot", height="100%"))),
  #                              htmlOutput("LegendText", width="200px", inline =FALSE),
 
  #                          plotOutput("coolplot"),
@@ -479,7 +478,7 @@ ui <- fluidPage(
                   ),
                   tabPanel("Clustering", downloadButton("downloadClusteringPDF", "Download pdf-file"), downloadButton("downloadClusteringPNG", "Download png-file"),
 #                           h4("UNDER DEVELOPMENT"), 
-                      plotOutput("plot_clust"),
+                            withSpinner(plotOutput("plot_clust")),
 #div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_clust", height="100%")),
 NULL
                            ),
@@ -607,9 +606,7 @@ df_upload <- reactive({
     data <- data %>% separate(Label,c("filename", "Sample","Number"),sep=':')
   }
   
-  #Replace space and dot of header names by underscore
-  data <- data %>%  
-    select_all(~gsub("\\s+|\\.", "_", .))
+
   
     return(data)
 })
@@ -646,7 +643,12 @@ df_filtered <- reactive({
     df <- df_upload() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
 
     
-  } else {df <- df_upload()}
+    } else {df <- df_upload()}
+  
+  #Replace space and dot of header names by underscore
+  df <- df %>%  
+    select_all(~gsub("\\s+|\\.", "_", .))
+  
   
 })
 
