@@ -585,11 +585,13 @@ df_upload <- reactive({
       #Read data from a URL
       #This requires RCurl
       if(input$URL == "") {
-        return(data.frame(x = "Enter a full HTML address, for example: https://zenodo.org/record/2211123/files/Fig3_Rac_S1P_30.csv"))
+        return(data.frame(x = "Enter a full HTML address, for example: https://raw.githubusercontent.com/JoachimGoedhart/PlotTwist/master/PlotTwist_tidy-RGS.csv"))
       } else if (url.exists(input$URL) == FALSE) {
         return(data.frame(x = paste("Not a valid URL: ",input$URL)))
       } else {data <- read_csv(input$URL)}
-      data$id <- "1"
+      if(input$tidyInput == FALSE ) {
+            data$id <- "1"
+      }
       
       
     } else if (input$data_input == 4) {
