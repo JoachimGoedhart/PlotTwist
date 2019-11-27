@@ -44,6 +44,7 @@ library(DT)
 library(dtw)
 library(ggrepel)
 library(shinycssloaders)
+library(RCurl)
 
 #library(fpc)
 library(NbClust)
@@ -189,7 +190,8 @@ ui <- fluidPage(
                        list("Example 1 (wide format)" = 1,
                             "Example 2 (tidy format)" = 2,
                             "Upload (multiple) file(s)" = 3,
-                            "Paste data" = 4)
+                            "Paste data" = 4,
+                            "URL (csv files only)" = 5)
                      ,
                      selected =  1),
                    
@@ -220,6 +222,16 @@ ui <- fluidPage(
                               "Comma" = ",",
                               "Semicolon" = ";"),
                        selected = "\t")),
+                   
+                   
+                   ### csv via URL as input      
+                   conditionalPanel(
+                     condition = "input.data_input=='5'",
+                     #         textInput("URL", "URL", value = "https://zenodo.org/record/2545922/files/FRET-efficiency_mTq2.csv"), 
+                     textInput("URL", "URL", value = ""), 
+                     NULL
+                   ),
+                   
                    # 
                    checkboxInput(inputId = "tidyInput",
                                   label = "These data are Tidy",
@@ -567,6 +579,19 @@ df_upload <- reactive({
           
         })
       }
+      
+    } else if (input$data_input == 5) {
+      
+      #Read data from a URL
+      #This requires RCurl
+      if(input$URL == "") {
+        return(data.frame(x = "Enter a full HTML address, for example: https://zenodo.org/record/2211123/files/Fig3_Rac_S1P_30.csv"))
+      } else if (url.exists(input$URL) == FALSE) {
+        return(data.frame(x = paste("Not a valid URL: ",input$URL)))
+      } else {data <- read_csv(input$URL)}
+      data$id <- "1"
+      
+      
     } else if (input$data_input == 4) {
       if (input$data_paste == "" || input$submit_data_button == 0) {
         data <- data.frame(x = "Copy your data into the textbox,
@@ -868,6 +893,16 @@ observe({
     
   }
   
+  
+  ############ ?url ################
+  
+  if (!is.null(query[['url']])) {
+    updateRadioButtons(session, "data_input", selected = 5)  
+    updateTextInput(session, "URL", value= query[['url']])
+    observe(print((query[['url']])))
+    updateTabsetPanel(session, "tabs", selected = "Plot")
+  }
+
   
   
   
