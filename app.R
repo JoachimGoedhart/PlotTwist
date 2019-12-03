@@ -54,9 +54,6 @@ library(NbClust)
 
 library(gridExtra)
 
-##### Uncomment for interactive graph panel
-#library(plotly)
-
 #Confidence level
 Confidence_Percentage = 95
 Confidence_level = Confidence_Percentage/100
@@ -341,29 +338,7 @@ ui <- fluidPage(
                   sliderInput("limits", "Set lower and upper limit of x-axis", 0, 120, value=c(1,100)),                   
                   numericInput ("binning", "Binning of x-axis (1=no binning):", value=1, min = 1, max = 100, step = 1),
 
-                  
-
-
-                    # checkboxInput(inputId = "indicate_stim2",
-                    #               label = "Indicate Baseline/Stimulus",
-                    #               value = FALSE),
-                    # 
-                    # conditionalPanel(
-                    #   condition = "input.indicate_stim2 == true",
-                    #   textInput("stim_range", "Range of grey box (from,to,from,to,...)", value = "46,146")),
-                    # checkboxInput(inputId = "no_grid",
-                    #               label = "Remove gridlines",
-                    #               value = FALSE),
-                    # 
                   h4("Plot Layout"),
-
-                  # conditionalPanel(
-                  #   condition = "input.change_scale2 == true",
-                  #   actionButton('range_lineplot','Copy range from lineplot'),
-                  # 
-                  #   textInput("range_x2", "Range temporal axis (min,max)", value = "")
-                  #   
-                  # ),
 
                     textInput("range_y3", "Y-axis (min,max); blank for autoscaling", value = ""),
   
@@ -380,7 +355,7 @@ ui <- fluidPage(
   
               ),
                     
-#              conditionalPanel(condition = "input.tabs=='Plot' || input.tabs=='Clustering'",
+
               conditionalPanel(condition = "input.tabs=='Plot'",
                                                 
                    h4("Labels"),
@@ -443,7 +418,6 @@ ui <- fluidPage(
                    
                    conditionalPanel(
                      condition = "input.add_legend == true",
- #                    condition = "input.add_legend == true && input.data_form!='dataaspixel'",
                      textInput("legend_title", "Legend title:", value = "")
                    ),
                    checkboxInput("show_labels_y", "Add labels to objects", value=FALSE),
@@ -482,21 +456,17 @@ ui <- fluidPage(
                            div(`data-spy`="affix", `data-offset-top`="10", withSpinner(plotOutput("coolplot", height="100%"))),
  #                              htmlOutput("LegendText", width="200px", inline =FALSE),
 
- #                          plotOutput("coolplot"),
                              NULL
                            
                            
 
                   ),
                   tabPanel("Clustering", downloadButton("downloadClusteringPDF", "Download pdf-file"), downloadButton("downloadClusteringPNG", "Download png-file"),
-#                           h4("UNDER DEVELOPMENT"), 
                             withSpinner(plotOutput("plot_clust")),
 #div(`data-spy`="affix", `data-offset-top`="10", plotOutput("plot_clust", height="100%")),
 NULL
                            ),
-##### Uncomment for interactive graph panel
-#                  tabPanel("Plot-interactive", plotlyOutput("plot_interact")
-#                  ), 
+
                   tabPanel("Data Summary", tableOutput('data_summary')),
 
                   tabPanel("About", includeHTML("about.html")
@@ -702,9 +672,6 @@ df_upload_tidy <- reactive({
 
 #   klaas <- koos
    klaas <- df_filtered()   
-#        c_choice <- input$c_var
-#        g_choice <- input$g_var
-#        klaas <- unite(klaas, unique_id, c(c_choice, g_choice), sep="_", remove = FALSE)
         
   }
   return(klaas)
@@ -784,10 +751,11 @@ observe({
     
     
     if (presets_data[1] == "1" || presets_data[1] == "2") {
-      observe({print(input$data_input)})
       updateTabsetPanel(session, "tabs", selected = "Plot")
     }
   }
+  
+
   
   ############ ?vis ################
   
@@ -871,12 +839,6 @@ observe({
     #    updateCheckboxInput(session, "add_description", value = presets_label[9])
   }
   
-  
-  
-
-  
-  
-  
   ############ ?stim ################
   
   if (!is.null(query[['stim']])) {
@@ -890,9 +852,6 @@ observe({
     updateTextInput(session, "stim_range", value= presets_stim[3])
     updateTextInput(session, "stim_text", value= presets_stim[4])
     updateTextInput(session, "stim_colors", value= presets_stim[5])
-
-    
-    
   }
   
   
@@ -905,23 +864,7 @@ observe({
     updateTabsetPanel(session, "tabs", selected = "Plot")
   }
 
-  
-  
-  
-  
-#   ############ ?url ################
-#   
-#   if (!is.null(query[['url']])) {
-#     updateRadioButtons(session, "data_input", selected = 5)  
-#     updateTextInput(session, "URL", value= query[['url']])
-#     observe(print((query[['url']])))
-#     updateTabsetPanel(session, "tabs", selected = "Plot")
-#   }
 
-  
-  
-  
-  
    })
  
 
@@ -1745,18 +1688,9 @@ plot_data <- reactive({
                                         segment.size = 0.5)
               
             }
-                  
-    
-  
- #     observe({print(df_label)})
-
-
       }
 
-    
-     #########
-    #########3
-    #######
+
     
     if (input$show_labels_y == TRUE && input$multiples == TRUE) {
     #Show labels in upper right corner
@@ -2169,26 +2103,16 @@ plot_map <- reactive({
   
   
 
-  
-  
   # Facetting for heatmap - requires optimization. Can be done, but is complicated, especially in combination with annotation of stimulus
   # https://jcoliver.github.io/learn-r/006-heatmaps.html
 #  if (input$multiples == TRUE && number_of_conditions > 1) {
 #    p <- p+ facet_grid(id~., scales = "free_y", space = "free_y")
 #    p <- p+ facet_grid(id~.)
 #  }
-    
-
-  
   
   return(p)
   
 })
-
-
-
-
-
 
 
 ############# Set width and height of the plot area ###############
