@@ -31,7 +31,7 @@
 # look into fuzzy clustering
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
-#options(shiny.maxRequestSize=30*1024^2)
+options(shiny.maxRequestSize=30*1024^2)
 
 library(shiny)
 library(ggplot2)
@@ -716,8 +716,11 @@ observeEvent(input$tabs, {
   # Only after data upload and pressing the "Clustering" tab the min and max valeu for time will be determined and used to update the "Trim" slider
   if (input$tabs == "Clustering") {
     # observe({print("Cluster tab selected")}) 
-    klaas <- df_upload_tidy()
-            
+
+    
+        klaas <- df_selected()
+    #    klaas <- df_upload_tidy()
+        
     max_Time <- max(klaas$Time)
     min_Time <- min(klaas$Time)
 
