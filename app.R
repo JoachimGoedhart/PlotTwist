@@ -1882,10 +1882,10 @@ plot_clusters <- reactive({
     p <- p + theme(plot.title = element_text(size=input$fnt_sz_title))
   }
   
-  #remove legend (if selected)
-  if (input$add_legend == FALSE) {  
+  #remove legend
+  # if (input$add_legend == FALSE) {  
     p <- p + theme(legend.position="none")
-  }
+  # }
   
   #remove gridlines (if selected)
   if (input$no_grid == TRUE) {  
@@ -2186,7 +2186,7 @@ plot_contribs <- reactive({
   klaas <- df_grouped()
   
   
-  #Ordering of Conditions according to supplied order (Uncomment for alphabetical order)
+  #Ordering of Conditions according to supplied order (Remove/comment for alphabetical order)
   klaas$id <- factor(klaas$id, levels=unique(klaas$id))
   
   klaas <- klaas %>% select(Cluster, id, unique_id) %>% distinct()
