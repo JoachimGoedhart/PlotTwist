@@ -77,7 +77,7 @@ df_wide_example <- read.csv("Data_wide_example_time_single.csv", na.strings = ""
 df_tidy_example <- read.csv("Data_tidy_example_time_multi.csv")
 
 # Create a reactive object here that we can share between all the sessions.
-vals <- reactiveValues(count=0)
+vals <- reactiveValues(count=0, datum=FALSE)
 
 ###### UI: User interface #########
 
@@ -603,8 +603,6 @@ df_upload <- reactive({
     data <- data %>% separate(Label,c("filename", "Sample","Number"),sep=':')
   }
   
-
-  
     return(data)
 })
 
@@ -969,8 +967,16 @@ df_selected <- reactive({
       g_choice <- "Sample"
     } 
     
-    koos <- df_temp %>% select(Time = !!x_choice , Value = !!y_choice, id=!!c_choice, Sample=!!g_choice)
-    koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
+    
+    if (c_choice != g_choice) {
+      koos <- df_temp %>% select(Time = !!x_choice , Value = !!y_choice, id=!!c_choice, Sample=!!g_choice)
+      koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
+    } else {
+      koos <- df_temp %>% select(Time = !!x_choice , Value = !!y_choice, Sample=!!g_choice)
+      koos$id <- "1"
+      koos <- unite(koos, unique_id, c(NULL, Sample), sep="_", remove = FALSE)
+    }
+
     
   } else if (input$tidyInput == FALSE ) {
 #    koos <- df_upload_tidy() %>% filter(!is.na(Value))
@@ -984,6 +990,20 @@ df_selected <- reactive({
       koos <- unite(koos, unique_id, c(NULL, Sample), sep="", remove = FALSE)
     }
   }
+  
+  
+  #### Check if x-axis is date by checking for 2 dashes or 2 slashes in the first cell x
+  #### if (length(gregexpr("-", x, fixed = TRUE)[[1]])==2 || length(gregexpr("//", x, fixed = TRUE)[[1]])==2 ) {}
+  
+  if (length(gregexpr("-", koos$Time[1], fixed = TRUE)[[1]])==2 || length(gregexpr("/", koos$Time[1], fixed = TRUE)[[1]])==2 ) {
+    koos$Time <- as.Date(koos$Time)
+    vals$Datum[1] <- TRUE
+    observe({print(vals$Datum)})
+  } else {
+    vals$Datum[1] <- FALSE
+    observe({print(vals$Datum)})
+  }
+  
   observe({ print(head(koos)) })
   return(koos)
 })
@@ -1378,7 +1398,7 @@ plot_data <- reactive({
     ############## Adjust X-scaling if necessary ##########
     
     #Adjust scale if range for x (min,max) is specified
-    if (input$range_x != "" &&  input$change_scale == TRUE) {
+    if (input$range_x != "" &&  input$change_scale == TRUE && !vals$Datum) {
       rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
       observe({ print(rng_x) })
       
@@ -1394,8 +1414,15 @@ plot_data <- reactive({
         koos <-  koos %>% filter(Time >= rng_x[1] & Time <= rng_x[2] )
       }
       
+      
+
+      } else if (input$range_x != "" &&  input$change_scale == TRUE && vals$Datum) {
+        rng_x <- as.Date(strsplit(input$range_x,",")[[1]])
+        # rng_x <- c(as.Date(rng_x[1]),as.Date(rng_x[2]))  
+      }
+      
       #Autoscale if rangeis NOT specified
-    } else if (input$range_x == "" ||  input$change_scale == FALSE) {
+     else if (input$range_x == "" ||  input$change_scale == FALSE) {
       rng_x <- c(min(klaas$Time), max(klaas$Time))
       #     observe({ print(rng_x) })
     }
@@ -1614,14 +1641,10 @@ plot_data <- reactive({
     }
     
 
-    
     ################################ Add labels  ####################
     # For traces in case of one conditions
     # For stats in case of multiple
-    
-    
-    
-
+     
     
     #Generate a dataframe with the labels
     if (input$show_labels_y == TRUE && input$multiples == FALSE) {
@@ -1976,12 +1999,32 @@ plot_map <- reactive({
   p <- p + scale_y_discrete(limits=custom_order)
   }
   
-  rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
+
+    rng_y <- as.numeric(strsplit(input$range_y2,",")[[1]])
 #  if (rng_y[1]=="" || rng_y[2]=="") {rng_y <- c("","")}
+
   
-  
-  rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
-  p <- p + xlim(rng_x[1],rng_x[2])  
+
+    #Autoscale if rangeis NOT specified
+    if (input$range_x == "" ||  input$change_scale == FALSE) {
+      rng_x <- c(min(klaas$Time), max(klaas$Time))
+      #     observe({ print(rng_x) })
+    } else {
+      
+      
+      if (!vals$Datum) {
+        rng_x <- as.numeric(strsplit(input$range_x,",")[[1]])
+        p <- p + xlim(rng_x[1],rng_x[2])  
+      } else if (vals$Datum) {
+        rng_x <- (strsplit(input$range_x,",")[[1]])
+        p <- p + xlim(as.Date(rng_x[1]),as.Date(rng_x[2]))  
+      }
+      
+      
+      
+    }
+    
+    
   
   # if (input$change_scale == TRUE && rng_y[1]!=NA && length(rng_y)>1) {
   #     if (rng_y[2]<rng_y[1]) {
