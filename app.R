@@ -77,7 +77,7 @@ df_wide_example <- read.csv("Data_wide_example_time_single.csv", na.strings = ""
 df_tidy_example <- read.csv("Data_tidy_example_time_multi.csv")
 
 # Create a reactive object here that we can share between all the sessions.
-vals <- reactiveValues(count=0, datum=FALSE)
+vals <- reactiveValues(count=0)
 
 ###### UI: User interface #########
 
@@ -431,7 +431,9 @@ ui <- fluidPage(
                    #Session counter: https://gist.github.com/trestletech/9926129
                    h4("About"),  "There are currently", 
                    verbatimTextOutput("count"),
-                   "session(s) connected to this app."
+                   "session(s) connected to this app.",
+                   hr(),
+                   h4("Find our other dataViz apps at:"),a("https://huygens.science.uva.nl/", href = "https://huygens.science.uva.nl/")
                    
                  ),
                  
@@ -481,6 +483,7 @@ NULL
 server <- function(input, output, session) {
   
   isolate(vals$count <- vals$count + 1)
+  vals$Datum <- FALSE
 
 ##################### Synchronize scales between tabs ##################  
   
@@ -993,7 +996,7 @@ df_selected <- reactive({
   
   
   #### Check if x-axis is date by checking for 2 dashes or 2 slashes in the first cell x
-  #### if (length(gregexpr("-", x, fixed = TRUE)[[1]])==2 || length(gregexpr("//", x, fixed = TRUE)[[1]])==2 ) {}
+  #### If dashes or slashes are detected, assume it is the Date formate (yyyy-mm-dd or yyyy/mm/dd)
   
   if (length(gregexpr("-", koos$Time[1], fixed = TRUE)[[1]])==2 || length(gregexpr("/", koos$Time[1], fixed = TRUE)[[1]])==2 ) {
     koos$Time <- as.Date(koos$Time)
@@ -1556,7 +1559,6 @@ plot_data <- reactive({
       stimText <- strsplit(input$stim_text,",")[[1]]
     }
 
-    
     if (input$indicate_stim == TRUE && input$stim_colors !="") {
       stimColors <- gsub("\\s","", strsplit(input$stim_colors,",")[[1]])
       
@@ -1564,22 +1566,17 @@ plot_data <- reactive({
       stimColors <- "black"
     }
     
-      
-  
     # if a stimulus is applied
     if (input$indicate_stim == TRUE) {
       
       p <- p  +  theme(plot.margin = unit(c(3,1,1,1), "lines"))
       p <- p + coord_cartesian(xlim=c(rng_x[1],rng_x[2]),ylim=c(lower_y,upper_y),clip = 'off')
       
-
-      
       #If only one number is entered, a vertical line is added
       if (length(rang) ==1) {
         p <- p + geom_vline(xintercept=rang[1], black="orange", size=1)
       }
       
-
       nsteps = floor(length(rang)/2)
       #Repeat the colors if needed
       if(length(stimColors) < nsteps) {
