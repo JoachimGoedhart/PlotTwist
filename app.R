@@ -54,6 +54,8 @@ library(NbClust)
 
 library(gridExtra)
 
+source("themes.R")
+
 #Confidence level
 Confidence_Percentage = 95
 Confidence_level = Confidence_Percentage/100
@@ -160,7 +162,7 @@ ui <- fluidPage(
                                                 a("Click here for more info on color names",
                                                   href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
                             ),
-                            
+                            checkboxInput(inputId = "dark", label = "Dark Theme", value = FALSE),
                             NULL
                   ),
                   
@@ -1398,6 +1400,13 @@ plot_data <- reactive({
     klaas <- df_binned() 
     koos <- df_summary_mean()
     
+    # Change linecolor in case of dark mode
+    if (input$dark) {
+      line_color="grey80"
+    } else if (input$dark==FALSE) {
+      line_color="black"
+    } 
+    
     ############## Adjust X-scaling if necessary ##########
     
     #Adjust scale if range for x (min,max) is specified
@@ -1452,7 +1461,7 @@ plot_data <- reactive({
     if (input$color_data == FALSE) {
       kleur_data <- NULL
     }
- 
+    
     if (input$fnt_sz_stim == "") {
       fnt_sz_stim <- 6
     } else {
@@ -1502,25 +1511,45 @@ plot_data <- reactive({
         
     if (input$data_form == "dataasline") {
       p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_line(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=0.5*multiplier, alpha=input$alphaInput)}
     } else if (input$data_form == "dataasdot") {
       p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_point(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
     } 
 
     #### plot stats ####
     
-    if (input$summaryInput == TRUE  && input$add_CI == FALSE) {
+    # if (input$summaryInput == TRUE  && input$add_CI == FALSE) {
+    #   p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
+    #   if (!input$color_stats) {p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id"),color=line_color,size=2,alpha=input$alphaInput_summ)}
+    # } else if (input$summaryInput == TRUE  && input$add_CI == TRUE) {
+    #   p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+    #   p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
+    #   p <- p + guides(fill = FALSE)
+    # } else if (input$summaryInput == FALSE  && input$add_CI == TRUE) {
+    #   p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+    #   if (!input$color_stats) {p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id"), fill=line_color, alpha=input$alphaInput_summ/2)}
+    #   
+    # }
+    
+    
+    if (input$summaryInput == TRUE) {
       p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
-    } else if (input$summaryInput == TRUE  && input$add_CI == TRUE) {
-      p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
-      p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
-      p <- p + guides(fill = FALSE)
-    } else if (input$summaryInput == FALSE  && input$add_CI == TRUE) {
-      p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+      if (!input$color_stats) {p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id"),color=line_color,size=2,alpha=input$alphaInput_summ)}
     }
+   if (input$add_CI == TRUE) {
+      p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
+      if (!input$color_stats) {p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id"), fill=line_color, alpha=input$alphaInput_summ/2)}
+      
+    }
+    
+    
+    
     
     
     # This needs to go here (before annotations)
     p <- p+ theme_light(base_size = 16)
+    if (input$dark) {p <- p+ theme_darker(base_size = 16)}
     
 
     ############## Adjust Y-scaling if necessary ##########
@@ -1826,6 +1855,11 @@ plot_clusters <- reactive({
   
   klaas <- df_grouped()
   
+  
+  if (input$dark) {line_color="grey80"} else {line_color="gray20"}
+  
+  ########## Define alternative color palettes ##########
+  
   newColors <- NULL
   
   if (input$adjustcolors == 2) {
@@ -1863,6 +1897,7 @@ plot_clusters <- reactive({
 
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
+
   
 
   
@@ -2046,6 +2081,7 @@ plot_map <- reactive({
 
      # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
+
   
   
   #################### Add labels for perturbations #####################
