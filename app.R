@@ -1549,7 +1549,7 @@ plot_data <- reactive({
     
     # This needs to go here (before annotations)
     p <- p+ theme_light(base_size = 16)
-    if (input$dark) {p <- p+ theme_darker(base_size = 16)}
+    if (input$dark) {p <- p+ theme_dark_basic(base_size = 16)}
     
 
     ############## Adjust Y-scaling if necessary ##########
@@ -1836,7 +1836,7 @@ plot_data <- reactive({
     #Remove upper and right axis
 
         p <- p + theme(panel.border = element_blank())
-        p <- p + theme(axis.line.x  = element_line(colour = "black"), axis.line.y  = element_line(colour = "black"))
+        p <- p + theme(axis.line.x  = element_line(colour = line_color), axis.line.y  = element_line(colour = line_color))
 
     return(p)
     
