@@ -1549,7 +1549,7 @@ plot_data <- reactive({
     
     # This needs to go here (before annotations)
     p <- p+ theme_light(base_size = 16)
-    if (input$dark) {p <- p+ theme_dark_basic(base_size = 16)}
+    if (input$dark) {p <- p+ theme_light_dark_bg(base_size = 16)}
     
 
     ############## Adjust Y-scaling if necessary ##########
