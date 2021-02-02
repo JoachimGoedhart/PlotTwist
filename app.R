@@ -578,7 +578,7 @@ df_upload <- reactive({
         
         } else {
           isolate({
-            data <- read_delim(input$data_paste,
+            data <- read.delim(input$data_paste,
                                delim = input$text_delim,
                                col_names = TRUE)
             
@@ -1478,6 +1478,7 @@ plot_data <- reactive({
     } else if (input$adjustcolors == 4) {
       newColors <- Tol_light
     } else if (input$adjustcolors == 6) {
+      Okabe_Ito[8] <- line_color
       newColors <- Okabe_Ito
     } else if (input$adjustcolors == 5) {
       newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
@@ -1672,6 +1673,8 @@ plot_data <- reactive({
     # For stats in case of multiple
      
     
+    
+    
     #Generate a dataframe with the labels
     if (input$show_labels_y == TRUE && input$multiples == FALSE) {
             
@@ -1679,12 +1682,13 @@ plot_data <- reactive({
             if (input$summaryInput == TRUE) {
               df_label <- koos %>% group_by(id) %>% filter(Time==last(Time))
               
-     #         %>% mutate(Value=mean, unique_id=id) 
-            
             #If  summary is not selected, label all traces  
             } else if (input$summaryInput == FALSE) {
               df_label <- klaas %>% filter(Time==last(Time))
+              df_label$unique_id <- gsub(".*_","",df_label$unique_id)
             }
+      
+ 
             
             if (input$summaryInput == FALSE && input$color_data == FALSE) {
               p <- p + geom_label_repel(data = df_label, aes_string(label='unique_id', x='Time', y='Value'),
@@ -1751,8 +1755,8 @@ plot_data <- reactive({
       if(number_of_conditions == 1) {
 
         #show unique_id in upper right corner
-        df_label <- klaas %>% filter(Time==last(Time))
-
+        df_label <- klaas %>% filter(Time==last(Time)) 
+        
       } else if (number_of_conditions > 1) {
 
         #show id in upper right corner
@@ -1761,7 +1765,10 @@ plot_data <- reactive({
       
       if (number_of_conditions == 1 && input$color_data == FALSE) {
 
-        p <- p + geom_label(data = df_label, aes(label=unique_id,x=Inf,y=Inf),
+        # p <- p + geom_label(data = df_label, aes(label=unique_id,x=Inf,y=Inf),
+        # I replaced the line above for better support of object labeling (avoiding long, ugly names)
+        
+        p <- p + geom_label(data = df_label, aes(label=Sample,x=Inf,y=Inf),
                                   fill = 'black',
                                   fontface = 'bold', color = 'white', size=5,
                                   vjust = 1,
@@ -1769,7 +1776,7 @@ plot_data <- reactive({
        
         
       } else if (number_of_conditions == 1 && input$color_data == TRUE) {
-        p <- p + geom_label(data = df_label, aes(label=unique_id,x=Inf,y=Inf, fill=unique_id),
+        p <- p + geom_label(data = df_label, aes(label=Sample,x=Inf,y=Inf, fill=Sample),
                             fontface = 'bold', color = 'white', size=5,
                             vjust = 1,
                             hjust = 1)
@@ -1820,7 +1827,7 @@ plot_data <- reactive({
       if (number_of_conditions == 1) {
                   p <- p+ facet_wrap(~unique_id)
                   #Remove the strip above the individual panels
-                  p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.5, "lines"),panel.spacing.x = unit(.5, "lines"))
+                  p <- p + theme(strip.background = element_blank(), strip.text = element_blank(), panel.spacing.y = unit(.9, "lines"),panel.spacing.x = unit(.6, "lines"))
       } else if (number_of_conditions > 1) {
                     p <- p+ facet_grid(id~.)
       }
@@ -1837,7 +1844,10 @@ plot_data <- reactive({
 
         p <- p + theme(panel.border = element_blank())
         p <- p + theme(axis.line.x  = element_line(colour = line_color), axis.line.y  = element_line(colour = line_color))
-
+        
+        #Extend the canvas to avoid clipping of x-axis labels 
+        p <- p + theme(plot.margin = unit(c(5.5,16,5.5,5.5), "pt"))
+        
     return(p)
     
   }) #close output$coolplot
@@ -1869,6 +1879,7 @@ plot_clusters <- reactive({
   } else if (input$adjustcolors == 4) {
     newColors <- Tol_light
   } else if (input$adjustcolors == 6) {
+    Okabe_Ito[8] <- line_color
     newColors <- Okabe_Ito
   } else if (input$adjustcolors == 5) {
     newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
