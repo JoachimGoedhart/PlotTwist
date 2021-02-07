@@ -854,7 +854,7 @@ observe({
     observe(print((presets_stim)))
     
     updateCheckboxInput(session, "indicate_stim", value = presets_stim[1])
-#    updateRadioButtons(session, "stim_shape", selected = presets_stim[2])
+    updateRadioButtons(session, "stim_shape", selected = presets_stim[2])
     updateTextInput(session, "stim_range", value= presets_stim[3])
     updateTextInput(session, "stim_text", value= presets_stim[4])
     updateTextInput(session, "stim_colors", value= presets_stim[5])
@@ -1840,13 +1840,15 @@ plot_data <- reactive({
       
     }
 
-    #Remove upper and right axis
-
+    
+        #Extend the canvas to avoid clipping of x-axis labels 
+        p <- p + theme(plot.margin = unit(c(5.5,16,5.5,5.5), "pt"))
+        
+        #Remove upper and right axis
         p <- p + theme(panel.border = element_blank())
         p <- p + theme(axis.line.x  = element_line(colour = line_color), axis.line.y  = element_line(colour = line_color))
         
-        #Extend the canvas to avoid clipping of x-axis labels 
-        p <- p + theme(plot.margin = unit(c(5.5,16,5.5,5.5), "pt"))
+
         
     return(p)
     
