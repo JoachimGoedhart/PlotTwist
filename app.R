@@ -1330,7 +1330,7 @@ df_cvi <- reactive({
 
 df_summary_mean <- reactive({
   koos <- df_binned() %>%
-    group_by(Time, id) %>% 
+    group_by(Time, id) %>% drop_na(Value) %>%
     summarise(n = n(),
               mean = mean(Value, na.rm = TRUE),
               median = median(Value, na.rm = TRUE),
