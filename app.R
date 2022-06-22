@@ -190,7 +190,8 @@ ui <- fluidPage(
                             "Example 2 (tidy format)" = 2,
                             "Upload (multiple) file(s)" = 3,
                             "Paste data" = 4,
-                            "URL (csv files only)" = 5)
+                            "URL (csv files only)" = 5,
+                            "Copy&Paste from FIJI"=6)
                      ,
                      selected =  1),
                    
@@ -204,7 +205,7 @@ ui <- fluidPage(
                                  ),
                                  selected = "text")
                      ),
-                   
+                   #########
                    conditionalPanel(
                      condition = "input.data_input=='4'",
                      h5("Paste data below:"),
@@ -230,6 +231,15 @@ ui <- fluidPage(
                      textInput("URL", "URL", value = ""), 
                      NULL
                    ),
+                   ########
+                   conditionalPanel(
+                     condition = "input.data_input=='6'",
+                     h5("Paste data below:"),
+                     tags$textarea(id = "data_paste2",
+                                   placeholder = "Add data here",
+                                   rows = 10,
+                                   cols = 20, "")),
+                   
                    
                    # 
                    checkboxInput(inputId = "tidyInput",
@@ -486,6 +496,13 @@ server <- function(input, output, session) {
   
   isolate(vals$count <- vals$count + 1)
   vals$Datum <- FALSE
+  
+  
+  x_var.selected <- "Time"
+  y_var.selected <- "Value"
+  c_var.selected <- "id"
+  g_var.selected <- "Sample"
+
 
 ##################### Synchronize scales between tabs ##################  
   
@@ -517,10 +534,15 @@ df_upload <- reactive({
 #      
       updateSelectInput(session, "tidyInput", selected = TRUE)
       data <- df_tidy_example
+      x_var.selected <<- "Time"
+      y_var.selected <<- "Value"
+      c_var.selected <<- "id"
+      g_var.selected <<- "Sample"
 
     } else if (input$data_input == 3) {
       if (is.null(input$upload)) {
         return(data.frame(x = "Select your datafile", Time=1,Cell=1, id=1))
+
       } else {
         isolate({
           
@@ -568,6 +590,40 @@ df_upload <- reactive({
             data$id <- "1"
       }
       
+    } else if (input$data_input == 6) {
+
+
+      if (input$data_paste2 == "") {
+        data <- data.frame(x = "Paste your data into the textbox", Time="1", id="1")
+      } else {
+        isolate({
+          data <- read_delim(input$data_paste2,
+                             delim = '\t',
+                             col_names = TRUE)
+          
+          #Check that data has at least 2 columns (1st is Time) and 2 rows (upper row is header)
+          if (ncol(data)<2 || nrow(data)<1) {return(data.frame(x = "Number of columns and rows should be >2", Time="1", id="1"))}
+          #The first column is defined as Time, id is added for compatibility
+          
+          #Check that one of the column names is "label"
+          if ("Label" %in% colnames(data) == FALSE) {return(data.frame(x = "Make sure that column names are copied in FIJI and that 'Display label' is checked in 'Set Measurements'", Time="1", id="1"))}
+
+      # Seperate 'Label' and rename columns
+      data <- data %>% separate(Label, c('file','Sample','frame'), sep = ':')
+      # 
+      # # Make sure that x- and y-variable are numbers
+      data <- data %>% mutate (Slice = as.numeric(Slice), Mean = as.numeric(Mean))
+      # 
+      updateSelectInput(session, "tidyInput", selected = TRUE)
+      # 
+      data$id <- "1"
+      x_var.selected <<- "Slice"
+      y_var.selected <<- "Mean"
+      c_var.selected <<- "id"
+      g_var.selected <<- "Sample"
+        })
+      }
+
       
     } else if (input$data_input == 4) {
       if (input$data_paste == "" || input$submit_data_button == 0) {
@@ -578,7 +634,7 @@ df_upload <- reactive({
         
         } else {
           isolate({
-            data <- read.delim(input$data_paste,
+            data <- read_delim(input$data_paste,
                                delim = input$text_delim,
                                col_names = TRUE)
             
@@ -607,6 +663,8 @@ df_upload <- reactive({
   if("Label" %in% colnames(data)) {
     data <- data %>% separate(Label,c("filename", "Sample","Number"),sep=':')
   }
+  
+  observe({print(head(data))})
   
     return(data)
 })
@@ -687,10 +745,10 @@ observe({
   var_names  <- names(df_upload())
   var_list <- c("none", var_names)
   #        updateSelectInput(session, "colour_list", choices = var_list)
-  updateSelectInput(session, "y_var", choices = var_list, selected="Value")
-  updateSelectInput(session, "x_var", choices = var_list, selected="Time")
-  updateSelectInput(session, "c_var", choices = var_list, selected="id")
-  updateSelectInput(session, "g_var", choices = var_list, selected="Sample")
+  updateSelectInput(session, "y_var", choices = var_list, selected=y_var.selected)
+  updateSelectInput(session, "x_var", choices = var_list, selected=x_var.selected)
+  updateSelectInput(session, "c_var", choices = var_list, selected=c_var.selected)
+  updateSelectInput(session, "g_var", choices = var_list, selected=g_var.selected)
   updateSelectInput(session, "filter_column", choices = var_list, selected="none")
 })
 
@@ -756,7 +814,7 @@ observe({
     updateTextInput(session, "base_range", value= presets_data[5])
     
     
-    if (presets_data[1] == "1" || presets_data[1] == "2") {
+    if (presets_data[1] == "1" || presets_data[1] == "2" || presets_data[1] == "6") {
       updateTabsetPanel(session, "tabs", selected = "Plot")
     }
   }
@@ -982,7 +1040,6 @@ df_selected <- reactive({
       koos <- unite(koos, unique_id, c(NULL, Sample), sep="_", remove = FALSE)
     }
 
-    
   } else if (input$tidyInput == FALSE ) {
 #    koos <- df_upload_tidy() %>% filter(!is.na(Value))
     koos <- df_upload_tidy()
@@ -1276,7 +1333,7 @@ df_cvi <- reactive({
 
 df_summary_mean <- reactive({
   koos <- df_binned() %>%
-    group_by(Time, id) %>% 
+    group_by(Time, id) %>% drop_na(Value) %>%
     summarise(n = n(),
               mean = mean(Value, na.rm = TRUE),
               median = median(Value, na.rm = TRUE),
