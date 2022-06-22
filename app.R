@@ -603,7 +603,10 @@ df_upload <- reactive({
           
           #Check that data has at least 2 columns (1st is Time) and 2 rows (upper row is header)
           if (ncol(data)<2 || nrow(data)<1) {return(data.frame(x = "Number of columns and rows should be >2", Time="1", id="1"))}
-          #The first column is defined as Time, id is added for compatibility            
+          #The first column is defined as Time, id is added for compatibility
+          
+          #Check that one of the column names is "label"
+          if ("Label" %in% colnames(data) == FALSE) {return(data.frame(x = "Make sure that column names are copied in FIJI and that 'Display label' is checked in 'Set Measurements'", Time="1", id="1"))}
 
       # Seperate 'Label' and rename columns
       data <- data %>% separate(Label, c('file','Sample','frame'), sep = ':')
