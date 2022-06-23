@@ -702,12 +702,12 @@ df_filtered <- reactive({
 
     
     } else {df <- df_upload()}
-  
+
   #Replace space and dot of header names by underscore
   df <- df %>%  
     select_all(~gsub("\\s+|\\.", "_", .))
   
-  
+
 })
 
 
@@ -1045,15 +1045,15 @@ df_selected <- reactive({
     koos <- df_upload_tidy()
     
     
-    if (koos$id !="1") {
+    if (length(unique(koos$id)) > 1) {
       koos <- unite(koos, unique_id, c(id, Sample), sep="_", remove = FALSE)
-    } else if (koos$id=="1") {
+    } else if (length(unique(koos$id)) == 1) {
       #No need to generate a new id when only one condition is present
       koos <- unite(koos, unique_id, c(NULL, Sample), sep="", remove = FALSE)
     }
   }
   
-  
+
   #### Check if x-axis is date by checking for 2 dashes or 2 slashes in the first cell x
   #### If dashes or slashes are detected, assume it is the Date formate (yyyy-mm-dd or yyyy/mm/dd)
   
@@ -1067,6 +1067,7 @@ df_selected <- reactive({
   }
   
   observe({ print(head(koos)) })
+
   return(koos)
 })
 
@@ -1963,7 +1964,7 @@ plot_clusters <- reactive({
   #p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color="id"), alpha=input$alphaInput)
   
     
-  p <- p + stat_summary(fun.y=mean, aes(group=1), geom="line", colour="black", size=2,alpha=input$alphaInput_summ)
+  p <- p + stat_summary(fun=mean, aes(group=1), geom="line", colour="black", size=2,alpha=input$alphaInput_summ)
 
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
