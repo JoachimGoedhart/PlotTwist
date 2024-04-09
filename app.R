@@ -31,7 +31,7 @@
 # look into fuzzy clustering
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
-options(shiny.maxRequestSize=30*1024^2)
+options(shiny.maxRequestSize=90*1024^2)
 
 library(shiny)
 library(ggplot2)
@@ -90,7 +90,7 @@ ui <- fluidPage(
                  conditionalPanel(
                    condition = "input.tabs=='Plot'",
                    h4("Data"),
-                   radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot", "Heatmap" = "dataaspixel"), selected = "dataasline"),
+                   radioButtons("data_form", "Data as:", choices = list("Lines" = "dataasline", "Dots" = "dataasdot", "Lines & Dots"="dataasboth","Heatmap" = "dataaspixel"), selected = "dataasline"),
 
                    conditionalPanel(condition = "input.data_form != 'dataaspixel'",
                                     
@@ -548,7 +548,7 @@ df_upload <- reactive({
           
           if (input$file_type == "text") {
           #Read the selected files (with read.csv)
-          df_input_list <- lapply(input$upload$datapath, read.csv)
+          df_input_list <- lapply(input$upload$datapath, function(x) read.csv(x, na.strings = c("",".","NA", "NaN", "#N/A", "#VALUE!", "#DIV/0!")))
           } else if (input$file_type == "Excel"){
           df_input_list <- lapply(input$upload$datapath, read_excel)
           }
@@ -1212,7 +1212,7 @@ ordered_list <- reactive({
     #Remove Time info
     df_wide <- df_wide %>% select(-Time)
     #hierarchical clustering
-    hc <- hclust(dist(t(df_wide)))
+    hc <- hclust(stats::dist(t(df_wide)))
     #Column order from clustering
     col.order <- hc$order
     #Reorder the dataframe dat according to the column order determined by clustering
@@ -1263,7 +1263,7 @@ df_grouped <- reactive({
   } else {
     
     #Calculate the distance matrix
-    dst <- dist(df_wide_trans, method = input$method)
+    dst <- stats::dist(df_wide_trans, method = input$method)
   
       
     #Perform cluster analysis on the data
@@ -1314,12 +1314,12 @@ df_cvi <- reactive({
   if (n_max < k_max) {k_max <- n_max}
   
   if (input$method == "kmeans") {
-    res<-NbClust(df_wide_trans, diss=dist(df_wide_trans), distance = NULL, min.nc=2, max.nc=k_max, method = "kmeans", index = input$cvi)
+    res<-NbClust(df_wide_trans, diss=stats::dist(df_wide_trans), distance = NULL, min.nc=2, max.nc=k_max, method = "kmeans", index = input$cvi)
 
   } else {
 
     #Calculate the distance matrix    
-    dst <- dist(df_wide_trans, method = input$method)
+    dst <- stats::dist(df_wide_trans, method = input$method)
     res<-NbClust(df_wide_trans, diss=dst, distance = NULL, min.nc=2, max.nc=k_max, method = input$linkage, index = input$cvi)
   }
   
@@ -1572,6 +1572,11 @@ plot_data <- reactive({
       p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
       if (!input$color_data) {p <- p+geom_line(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=0.5*multiplier, alpha=input$alphaInput)}
     } else if (input$data_form == "dataasdot") {
+      p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_point(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
+    } else if (input$data_form == "dataasboth") {
+      p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_line(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=0.5*multiplier, alpha=input$alphaInput)}
       p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
       if (!input$color_data) {p <- p+geom_point(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
     } 
@@ -1969,9 +1974,6 @@ plot_clusters <- reactive({
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
 
-  
-
-  
   
   ############## Adjust scale if necessary ##########
   
