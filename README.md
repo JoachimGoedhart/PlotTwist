@@ -25,6 +25,8 @@ For more information on the underlying code and #dataViz styles see these blogs:
 
 The web-tool runs from a shiny server, and can be accessed at: [https://huygens.science.uva.nl/PlotTwist/](https://huygens.science.uva.nl/PlotTwist/)
 
+Or: [https://uva-nl.shinyapps.io/PlotTwist/](https://uva-nl.shinyapps.io/PlotTwist/)
+
 Alternatively, the app can run from R/Rstudio.
 
 #### Preparations
