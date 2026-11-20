@@ -31,7 +31,7 @@
 # look into fuzzy clustering
 # Correlation-based distance matrix: http://girke.bioinformatics.ucr.edu/GEN242/pages/mydoc/Rclustering.html
 
-options(shiny.maxRequestSize=90*1024^2)
+options(shiny.maxRequestSize=10*1024^2)
 
 library(shiny)
 library(ggplot2)
@@ -72,6 +72,8 @@ Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB',
 
 #From Color Universal Design (CUD): https://jfly.uni-koeln.de/color/
 Okabe_Ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
+
+viridis_colors  <- c("#440154", "#482878", "#3E4989", "#31688E", "#26828E", "#1F9E89", "#35B779", "#6DCD59", "#B4DE2C", "#FDE725")
 
 
 #Read a text file with demo data (comma separated values)
@@ -124,10 +126,8 @@ ui <- fluidPage(
                    
                    conditionalPanel(
                      condition = "input.change_scale == true && input.data_form !='dataaspixel'",
-                     textInput("range_y", "Range y-axis (min,max)", value = ""),
-                     checkboxInput(inputId = "scale_log_10",
-                                   label = "Log scale",
-                                   value = FALSE)
+                     selectInput("y_scale", "Y-axis scale", choices = c("Linear" = "linear", "Log10" = "log10", "Log2" = "log2")),
+                     textInput("range_y", "Range y-axis (min,max; positive for log scales)", value = "")
                      
                      
                    ),
@@ -493,6 +493,29 @@ NULL
 
 
 server <- function(input, output, session) {
+
+  
+  query_modal <- modalDialog(
+    title = HTML("<h2>Welcome to the official PlotTwist site</h2>
+
+    </br>
+    <h4>If you experience problems, try this mirror:
+    </br></br>
+                 <a href='https://amsterdamstudygroup.shinyapps.io/PlotTwist/'>https://amsterdamstudygroup.shinyapps.io/PlotTwist/</a></h4>"),
+    easyClose = T,
+    footer = tagList(
+      'Dismiss with <escape> key or clicking outside of the window'
+    )
+  )
+  
+  
+  
+  # Show the model on start up ...
+  showModal(query_modal)
+  
+  
+  
+  
   
   isolate(vals$count <- vals$count + 1)
   vals$Datum <- FALSE
@@ -860,6 +883,9 @@ observe({
       updateNumericInput(session, "plot_height", value= presets_layout[10])
       updateNumericInput(session, "plot_width", value= presets_layout[11])
     }
+    if (length(presets_layout)>11 && presets_layout[12] %in% c("linear", "log10", "log2")) {
+      updateSelectInput(session, "y_scale", selected = presets_layout[12])
+    }
     #  updateTabsetPanel(session, "tabs", selected = "Plot")
   }
   
@@ -948,7 +974,7 @@ url <- reactive({
   
   vis <- c(input$data_form, input$alphaInput, input$summaryInput, input$add_CI, input$alphaInput_summ, input$multiples, input$thicken)
   layout <- c(" ", input$no_grid, input$change_scale, input$range_x, input$range_y, input$color_data, input$color_stats,
-              input$adjustcolors, "X", input$plot_height, input$plot_width)
+              input$adjustcolors, "X", input$plot_height, input$plot_width, input$y_scale)
   
   #Hide the standard list of colors if it is'nt used
   if (input$adjustcolors != "5") {
@@ -1509,11 +1535,13 @@ plot_data <- reactive({
     klaas <- klaas %>% mutate(id = as.factor(id), unique_id = as.character(unique_id))
     koos <- koos %>% mutate(id = as.factor(id))
     
+    
+    ##### This piece of code is modified and now includes the sym() function to make it compatible with aes(), replacing the deprecated aes_strin()
     number_of_conditions <- nlevels(as.factor(klaas$id))
     if (number_of_conditions == 1) {
-      kleur_data <- "unique_id"
+      kleur_data <- sym("unique_id")
     } else if (number_of_conditions > 1) {
-        kleur_data <- "id"
+        kleur_data <- sym("id")
       }
   
     if (input$color_data == FALSE) {
@@ -1552,11 +1580,11 @@ plot_data <- reactive({
     if (input$color_stats == FALSE) {
       kleur_stats <- NULL
     } else if (input$color_stats == TRUE) {
-      kleur_stats <- "id"
+      kleur_stats <- sym("id")
     } 
     
     #### Command to prepare the plot ####
-    p <- ggplot(data=klaas, aes_string(x="Time")) 
+    p <- ggplot(data=klaas, aes(x=Time)) 
     
          
     #### plot individual measurements ####
@@ -1569,16 +1597,16 @@ plot_data <- reactive({
 
         
     if (input$data_form == "dataasline") {
-      p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
-      if (!input$color_data) {p <- p+geom_line(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=0.5*multiplier, alpha=input$alphaInput)}
+      p <- p+ geom_line(data=klaas, aes(x=Time, y=Value, group=unique_id, color=!!kleur_data), linewidth=0.5*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_line(aes(x=Time, y=Value, group=unique_id), color=line_color, linewidth=0.5*multiplier, alpha=input$alphaInput)}
     } else if (input$data_form == "dataasdot") {
-      p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
-      if (!input$color_data) {p <- p+geom_point(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
+      p <- p + geom_point(data=klaas, aes(x=Time, y=Value, group=unique_id, color=!!kleur_data), size=1*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_point(aes(x=Time, y=Value, group=unique_id), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
     } else if (input$data_form == "dataasboth") {
-      p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=0.5*multiplier, alpha=input$alphaInput)
-      if (!input$color_data) {p <- p+geom_line(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=0.5*multiplier, alpha=input$alphaInput)}
-      p <- p + geom_point(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color=kleur_data), size=1*multiplier, alpha=input$alphaInput)
-      if (!input$color_data) {p <- p+geom_point(aes_string(x="Time", y="Value", group="unique_id"), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
+      p <- p+ geom_line(data=klaas, aes(x=Time, y=Value, group=unique_id, color=!!kleur_data), linewidth=0.5*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_line(aes(x=Time, y=Value, group=unique_id), color=line_color, linewidth=0.5*multiplier, alpha=input$alphaInput)}
+      p <- p + geom_point(data=klaas, aes(x=Time, y=Value, group=unique_id, color=!!kleur_data), size=1*multiplier, alpha=input$alphaInput)
+      if (!input$color_data) {p <- p+geom_point(aes(x=Time, y=Value, group=unique_id), color=line_color, size=1*multiplier, alpha=input$alphaInput)}
     } 
 
     #### plot stats ####
@@ -1598,12 +1626,12 @@ plot_data <- reactive({
     
     
     if (input$summaryInput == TRUE) {
-      p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id", color=kleur_stats),size=2,alpha=input$alphaInput_summ)
-      if (!input$color_stats) {p <- p + geom_line(data=koos, aes_string(x="Time", y="mean", group="id"),color=line_color,size=2,alpha=input$alphaInput_summ)}
+      p <- p + geom_line(data=koos, aes(x=Time, y=mean, group=id, color=!!kleur_stats),linewidth=2,alpha=input$alphaInput_summ)
+      if (!input$color_stats) {p <- p + geom_line(data=koos, aes(x=Time, y=mean, group=id),color=line_color,linewidth=2,alpha=input$alphaInput_summ)}
     }
    if (input$add_CI == TRUE) {
-      p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id", fill=kleur_stats), alpha=input$alphaInput_summ/2)
-      if (!input$color_stats) {p <- p + geom_ribbon(data=koos, aes_string(x="Time", ymin="ci_lo", ymax="ci_hi", group="id"), fill=line_color, alpha=input$alphaInput_summ/2)}
+      p <- p + geom_ribbon(data=koos, aes(x=Time, ymin=ci_lo, ymax=ci_hi, group=id, fill=!!kleur_stats), alpha=input$alphaInput_summ/2)
+      if (!input$color_stats) {p <- p + geom_ribbon(data=koos, aes(x=Time, ymin=ci_lo, ymax=ci_hi, group=id), fill=line_color, alpha=input$alphaInput_summ/2)}
       
     }
     
@@ -1615,30 +1643,48 @@ plot_data <- reactive({
     p <- p+ theme_light(base_size = 16)
     if (input$dark) {p <- p+ theme_light_dark_bg(base_size = 16)}
     
+    is_log_scale <- input$change_scale && input$y_scale %in% c("log10", "log2")
+    if (is_log_scale) {
+      validate(need(
+        all(is.finite(klaas$Value) & klaas$Value > 0),
+        "Logarithmic scales require all plotted values to be finite and greater than zero."
+      ))
+
+      if (input$y_scale == "log10") {
+        p <- p + scale_y_log10(guide = "axis_logticks")
+        p <- p + theme(panel.grid.minor = element_blank())
+      } else {
+        p <- p + scale_y_continuous(trans = scales::log2_trans())
+      }
+    }
 
     ############## Adjust Y-scaling if necessary ##########
-    
-    
-    #Adjust scale if range for y (min,max) is specified
-    if (input$range_y != "" &&  input$change_scale == TRUE) {
-      rng_y <- as.numeric(strsplit(input$range_y,",")[[1]])
 
-      #If min>max invert the axis
-      if (rng_y[1]>rng_y[2]) {p <- p+ scale_y_reverse()}
-      
-      upper_y <- rng_y[2]
+    rng_y <- NULL
+    if (input$change_scale && nzchar(trimws(input$range_y))) {
+      rng_y <- suppressWarnings(as.numeric(trimws(strsplit(input$range_y, ",", fixed = TRUE)[[1]])))
+      validate(need(
+        length(rng_y) == 2 && all(is.finite(rng_y)),
+        "Enter exactly two finite y-axis range values, separated by a comma."
+      ))
+      if (is_log_scale) {
+        validate(need(
+          all(rng_y > 0),
+          "Logarithmic-scale range values must both be greater than zero."
+        ))
+      }
       lower_y <- rng_y[1]
-      
-
-      #Autoscale if rangeis NOT specified
-    } else if (input$range_y == "" ||  input$change_scale == FALSE) {
-
-      
-      #Read out the current range, this is necessary for annotation of stimulus
-      rng_y <- c(NULL,NULL)
-      upper_y <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range[2]
-      lower_y <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range[1]
-      
+      upper_y <- rng_y[2]
+    } else {
+      # Use positive data-scale values for annotations on logarithmic axes.
+      if (is_log_scale) {
+        lower_y <- min(klaas$Value, na.rm = TRUE)
+        upper_y <- max(klaas$Value, na.rm = TRUE)
+      } else {
+        panel_range <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range
+        lower_y <- panel_range[1]
+        upper_y <- panel_range[2]
+      }
     }
     range_y <- upper_y-lower_y
 
@@ -1667,7 +1713,7 @@ plot_data <- reactive({
       
       #If only one number is entered, a vertical line is added
       if (length(rang) ==1) {
-        p <- p + geom_vline(xintercept=rang[1], black="orange", size=1)
+        p <- p + geom_vline(xintercept=rang[1], black="orange", linewidth=1)
       }
       
       nsteps = floor(length(rang)/2)
@@ -1754,7 +1800,7 @@ plot_data <- reactive({
  
             
             if (input$summaryInput == FALSE && input$color_data == FALSE) {
-              p <- p + geom_label_repel(data = df_label, aes_string(label='unique_id', x='Time', y='Value'),
+              p <- p + geom_label_repel(data = df_label, aes(label=unique_id, x=Time, y=Value),
                                         fill = 'black',
                                         fontface = 'bold', color = 'white', size=6,
                                         nudge_x      = 20,
@@ -1767,7 +1813,7 @@ plot_data <- reactive({
 
             } else  if (input$summaryInput== FALSE && input$color_data == TRUE) {
                 #  for multiple conditions fill = id, but for a single condition use fill='unique_id'
-                p <- p + geom_label_repel(data = df_label, aes_string(label='unique_id', x='Time', y='Value', fill=kleur_data),
+                p <- p + geom_label_repel(data = df_label, aes(label=unique_id, x=Time, y=Value, fill=!!kleur_data),
 
                                           
                                           
@@ -1782,7 +1828,7 @@ plot_data <- reactive({
                 
             } else  if (input$summaryInput== TRUE && input$color_stats == FALSE) {
 
-              p <- p + geom_label_repel(data = df_label, aes_string(label='id', x='Time', y='mean'),
+              p <- p + geom_label_repel(data = df_label, aes(label=id, x=Time, y=mean),
                                         fill = 'black',
                                         fontface = 'bold', color = 'white', size=6,
                                         nudge_x      = 20,
@@ -1796,7 +1842,7 @@ plot_data <- reactive({
               
             } else  if (input$summaryInput== TRUE && input$color_stats == TRUE) {
               
-              p <- p + geom_label_repel(data = df_label, aes_string(label='id', x='Time', y='mean', fill='id'),
+              p <- p + geom_label_repel(data = df_label, aes(label=id, x=Time, y=mean, fill=id),
                                         
                                         fontface = 'bold', color = 'white', size=6,
                                         nudge_x      = 20,
@@ -1846,7 +1892,7 @@ plot_data <- reactive({
         
       } else  if (number_of_conditions > 1 && input$color_data == FALSE) {
         
-        p <- p + geom_label_repel(data = df_label, aes_string(label='id', x=Inf, y=Inf),
+        p <- p + geom_label_repel(data = df_label, aes(label=id, x=Inf, y=Inf),
                              fill = 'black',
                              fontface = 'bold', color = 'white', size=8,
                              vjust = 1,
@@ -1854,7 +1900,7 @@ plot_data <- reactive({
         
       } else  if (number_of_conditions > 1 && input$color_data == TRUE) {
         
-        p <- p + geom_label_repel(data = df_label, aes_string(label='id', x=Inf, y=Inf, fill='id'),
+        p <- p + geom_label_repel(data = df_label, aes(label=id, x=Inf, y=Inf, fill=id),
                              fontface = 'bold', color = 'white', size=8,
                              vjust = 1,
                              hjust = 1)
@@ -1866,11 +1912,6 @@ plot_data <- reactive({
     if (input$add_legend == TRUE) {
        p <- p + labs(color = input$legend_title, fill=input$legend_title)
     }
-    
-    # if log-scale checked specified
-    if (input$scale_log_10)
-      p <- p + scale_y_log10() 
-    
     
     #remove gridlines (if selected)
     if (input$no_grid == TRUE) {  
@@ -1957,19 +1998,19 @@ plot_clusters <- reactive({
   
   
   #### Command to prepare the plot ####
-  p <- ggplot(data=klaas, aes_string(x="Time", y="Value")) 
+  p <- ggplot(data=klaas, aes(x=Time, y=Value)) 
   
   p <- p+ scale_color_manual(values=newColors)
   p <- p+ scale_fill_manual(values=newColors)
   
   #### plot individual measurements ####
-  p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id"), alpha=input$alphaInput)
+  p <- p+ geom_line(data=klaas, aes(x=Time, y=Value, group=unique_id), alpha=input$alphaInput)
   
   # Color curves by id
   #p <- p+ geom_line(data=klaas, aes_string(x="Time", y="Value", group="unique_id", color="id"), alpha=input$alphaInput)
   
     
-  p <- p + stat_summary(fun=mean, aes(group=1), geom="line", colour="black", size=2,alpha=input$alphaInput_summ)
+  p <- p + stat_summary(fun=mean, aes(group=1), geom="line", colour="black", linewidth=2,alpha=input$alphaInput_summ)
 
   # This needs to go here (before annotations)
   p <- p+ theme_light(base_size = 16)
@@ -2093,10 +2134,10 @@ plot_map <- reactive({
   }
   
   #### Command to prepare the plot ####
-  p <- ggplot(data=klaas, aes_string(x="Time"))
+  p <- ggplot(data=klaas, aes(x=Time))
   
   #geom_raster is faster than geom_tile
-  p <- p + geom_raster(data=klaas, aes_string(x="Time", y="unique_id", fill="Value"))
+  p <- p + geom_raster(data=klaas, aes(x=Time, y=unique_id, fill=Value))
   #+ scale_fill_viridis_c()
 
   # Setting the order of the y-axis
@@ -2148,7 +2189,7 @@ plot_map <- reactive({
   #Log scale on standard black-blue gradient
   # p <- p+ scale_fill_gradient(limits=c(rng_y[1],rng_y[2]), trans = "log")
 
-  p <- p+ scale_fill_viridis_c(limits=c(rng_y[1],rng_y[2]), direction=1)
+  p <- p+ scale_fill_gradientn(colors = viridis_colors, limits=c(rng_y[1],rng_y[2]))
 
  
 
